@@ -12,10 +12,7 @@ end
 
 
 function solve(solver::General, model::Model, data::Primal, w::AbstractVector = Float64[])
-
-    w, = initialization(model, data)
-
-    return optimize(solver, model, data, w)
+    return optimize(solver, model, data)
 end
 
 

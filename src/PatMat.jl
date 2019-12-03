@@ -17,7 +17,7 @@ end
 # Primal problem
 # -------------------------------------------------------------------------------
 # General solver solution
-function optimize(solver::General, model::PatMat, data::Primal, w::AbstractVector)
+function optimize(solver::General, model::PatMat, data::Primal)
 
     Xpos = @view data.X[data.pos, :]
     Xneg = @view data.X[data.neg, :]
