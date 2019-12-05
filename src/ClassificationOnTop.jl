@@ -24,11 +24,11 @@ abstract type AbstractSolver end
 
 struct General <: AbstractSolver
     verbose
-    optimizer
+    solver
 
     function General(; verbose::Bool = false,
-                       optimizer     = ECOS.ECOSSolver(verbose = false))
-        new(verbose, optimizer)
+                       solver     = ECOS.ECOSSolver(verbose = false))
+        new(verbose, solver)
     end
 end
 

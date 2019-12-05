@@ -67,7 +67,7 @@ function optimize(solver::General, model::TopPushK, data::Primal)
                    z >= 0]
 
     problem = Convex.minimize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(w.value), t.value + sum(z.value)/model.K
 end
@@ -87,7 +87,7 @@ function optimize(solver::General, model::TopPush, data::Primal)
                    t >= Convex.maximum(Xneg*w)]
 
     problem = Convex.minimize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(w.value), t.value
 end
@@ -148,7 +148,7 @@ function optimize(solver::General, model::M, data::Dual) where {M<:AbstractTopPu
     M <: TopPushK && push!(constraints, β <= Convex.sum(α)/model.K)
 
     problem = Convex.maximize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(α.value), vec(β.value)
 end
@@ -196,7 +196,7 @@ function optimize(solver::General, model::M, data::Dual) where {M<:AbstractTopPu
     M <: TopPushK && push!(constraints, β <= Convex.sum(α)/model.K)
 
     problem = Convex.maximize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(α.value), vec(β.value)
 end

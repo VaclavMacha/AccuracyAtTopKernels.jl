@@ -35,7 +35,6 @@ function initialization(model::PatMat, data::Dual, α0, β0)
     Δ  = zero(αβδ)
     s  = data.K * vcat(α, β)
     
-
     return α, β, δ, αβδ, Δ, s
 end
 
@@ -69,7 +68,7 @@ function optimize(solver::General, model::PatMat, data::Primal)
                    z == data.X*w - t]
 
     problem = Convex.minimize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(w.value), t.value
 end
@@ -114,7 +113,7 @@ function optimize(solver::General, model::PatMat{<:Hinge}, data::Dual)
                    β >= 0]
 
     problem = Convex.maximize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(α.value), vec(β.value), δ.value
 end
@@ -166,7 +165,7 @@ function optimize(solver::General, model::PatMat{<:Quadratic}, data::Dual)
                    δ >= 0]
 
     problem = Convex.maximize(objective, constraints)
-    Convex.solve!(problem, solver.optimizer)
+    Convex.solve!(problem, solver.solver)
 
     return vec(α.value), vec(β.value), δ.value
 end
