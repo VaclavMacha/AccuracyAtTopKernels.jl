@@ -11,20 +11,20 @@ struct Primal{I<:Integer, V1<:AbstractVector, V2<:AbstractVector, A<:AbstractMat
     n::I
     npos::I
     nneg::I
+end
 
-    function Primal(X::A, y::V) where {A<:AbstractMatrix, V<:AbstractVector}
+function Primal(X::A, y::V) where {A<:AbstractMatrix, V<:AbstractVector}
 
-        ybool = Bool.(y)
-        pos = findall(ybool)
-        neg = findall(.~ybool)
+    ybool = Bool.(y)
+    pos = findall(ybool)
+    neg = findall(.~ybool)
 
-        dim  = size(X,2)
-        n    = length(y)
-        npos = length(pos)
-        nneg = length(neg)
+    dim  = size(X,2)
+    n    = length(y)
+    npos = length(pos)
+    nneg = length(neg)
 
-        return new{typeof(n), V, typeof(pos), A}(X, y, pos, neg, dim, n, npos, nneg)
-    end
+    return Primal(X, y, pos, neg, dim, n, npos, nneg)
 end
 
 
@@ -44,14 +44,14 @@ struct Dual{I<:Integer, V<:AbstractVector, A<:AbstractMatrix} <: AbstractData
     n::I
     nα::I
     nβ::I
+    nαβ::I
+end
 
-    function Dual(K::A, nα::I) where {A<:AbstractMatrix, I<:Integer} 
-        n    = size(K,1)
-        indα = 1:nα 
-        indβ = (nα + 1):n
+function Dual(K::A, n::I, nα::I, nβ::I = size(K,1) - nα) where {A<:AbstractMatrix, I<:Integer} 
+    indα = 1:nα 
+    indβ = (nα + 1):(nα + nβ)
 
-        return new{I, typeof(indα), A}(K, indα, indβ, n, nα, n - nα)
-    end
+    return Dual(K, indα, indβ, n, nα, nβ, nα + nβ)
 end
 
 

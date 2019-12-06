@@ -4,7 +4,7 @@ using Statistics, LinearAlgebra
 import Convex, ECOS, Roots, ProgressMeter
 
 export solve,
-       AbstractSolver, General, Gradient,
+       AbstractSolver, General, Gradient, Coordinate,
        AbstractSurrogate, Hinge, Quadratic, Exponential,
        AbstractModel, AbstractTopPushK, PatMat, TopPushK, TopPush,
        AbstractData, Primal, Dual
@@ -22,26 +22,42 @@ abstract type AbstractModel end
 abstract type AbstractTopPushK{AbstractSurrogate} <: AbstractModel end
 abstract type AbstractSolver end
 
-struct General <: AbstractSolver
-    verbose
-    solver
+struct General{S} <: AbstractSolver
+    solver::S
 
-    function General(; verbose::Bool = false,
-                       solver     = ECOS.ECOSSolver(verbose = false))
-        new(verbose, solver)
+    function General(; solver = ECOS.ECOSSolver(verbose = false))
+        new{typeof(solver)}(solver)
     end
 end
 
-struct Gradient <: AbstractSolver
-    maxiter
-    optimizer
-    verbose
+struct Gradient{I<:Integer, B<:Bool, O} <: AbstractSolver
+    maxiter::I
+    verbose::B
+    optimizer::O
 
-    function Gradient(; maxiter::Integer = 1000,
-                        optimizer        = Optimise.ADAM(),
-                        verbose::Bool    = true)
-        new(maxiter, optimizer, verbose)
+    function Gradient(; maxiter::I   = 1000,
+                        verbose::B   = true,
+                        optimizer::O = Optimise.ADAM()) where {I<:Integer, B<:Bool, O<:Any}
+        new{I, B, O}(maxiter, verbose, optimizer)
     end
+end
+
+struct Coordinate{I<:Integer, B<:Bool} <: AbstractSolver
+    maxiter::Integer
+    verbose::Bool
+
+    function Coordinate(; maxiter::I = 1000,
+                          verbose::B = true) where {I<:Integer, B<:Bool}
+        new{I, B}(maxiter, verbose)
+    end
+end
+
+mutable struct BestUpdate{I<:Integer, T<:Real}
+    k::I
+    l::I
+    Δ::T
+    L::T
+    vars::NamedTuple
 end
 
 include("surrogates.jl")

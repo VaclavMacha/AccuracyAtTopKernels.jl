@@ -1,56 +1,26 @@
-struct TopPushK{S<:AbstractSurrogate} <: AbstractTopPushK{S}
+struct TopPushK{S<:AbstractSurrogate, I<:Integer, T<:Real} <: AbstractTopPushK{S}
     l::S
-    K::Integer
-    C::Real
+    K::I
+    C::T
 
-    function TopPushK(l::S, K::Integer, C::Real) where {S<:AbstractSurrogate}
+    function TopPushK(l::S, K::I, C::T) where {S<:AbstractSurrogate, I<:Integer, T<:Real}
 
         @assert K >= 1 "The vaule of `K` must be greater or equal to 1."
 
-        return new{S}(l, K, C)
+        return new{S, I, T}(l, K, C)
     end
 end
 
 
-struct TopPush{S<:AbstractSurrogate} <: AbstractTopPushK{S}
+struct TopPush{S<:AbstractSurrogate, T<:Real} <: AbstractTopPushK{S}
     l::S
-    C::Real
-
-    function TopPush(l::S, C::Real) where {S<:AbstractSurrogate}
-        return new{S}(l, C)
-    end
-end
-
-
-
-function initialization(model::AbstractTopPushK, data::Primal, w0)
-    w = zeros(eltype(data.X), data.dim)
-    isempty(w0) || (w .= w0) 
-    Δ = zero(w)
-    s = data.X * w
-    return w, Δ, s
-end
-
-
-function initialization(model::AbstractTopPushK, data::Dual, α0, β0)
-    αβ   = zeros(eltype(data.K), data.n)
-    α, β = @views αβ[data.indα], αβ[data.indβ]
-
-    isempty(α0) || (α .= α0)
-    isempty(β0) || (β .= β0)
-
-    projection!(model, data, α, β)
-
-    Δ  = zero(αβ)
-    s  = data.K * vcat(α, β)
-    return α, β, αβ, Δ, s
+    C::T
 end
 
 
 # -------------------------------------------------------------------------------
-# Primal problem
+# Primal problem - General solver
 # -------------------------------------------------------------------------------
-# General solver solution
 function optimize(solver::General, model::TopPushK, data::Primal)
 
     Xpos = @view data.X[data.pos, :]
@@ -92,9 +62,19 @@ function optimize(solver::General, model::TopPush, data::Primal)
     return vec(w.value), t.value
 end
 
+# -------------------------------------------------------------------------------
+# Primal problem - Gradient descent solver
+# -------------------------------------------------------------------------------
+function initialization(model::AbstractTopPushK, data::Primal, w0)
+    w = zeros(eltype(data.X), data.dim)
+    isempty(w0) || (w .= w0) 
+    Δ = zero(w)
+    s = data.X * w
+    return w, s, Δ
+end
 
-# Our solution
-function objective(model::AbstractTopPushK, data::Primal, w, t, s)
+
+function objective(model::AbstractTopPushK, data::Primal, w, t, s = data.X*w)
     return w'*w/2 + model.C * sum(model.l.value.(t .- s[data.pos]))
 end
 
@@ -131,9 +111,9 @@ end
 
 
 # -------------------------------------------------------------------------------
-# Dual problem with hinge loss
+# Dual problem - General solver
 # -------------------------------------------------------------------------------
-# General solver solution
+# Hinge loss
 function optimize(solver::General, model::M, data::Dual) where {M<:AbstractTopPushK{<:Hinge}}
 
     α = Convex.Variable(data.nα)
@@ -153,35 +133,7 @@ function optimize(solver::General, model::M, data::Dual) where {M<:AbstractTopPu
     return vec(α.value), vec(β.value)
 end
 
-
-# Graient descent + projection
-function objective(model::AbstractTopPushK{<:Hinge}, data::Dual, α, β, s)
-    - s'*vcat(α, β)/2 + sum(α)/model.l.ϑ
-end
-
-
-function gradient!(model::AbstractTopPushK{<:Hinge}, data::Dual, α, β, s, Δ)
-    Δ             .= .- s
-    Δ[data.indα] .+= 1/model.l.ϑ
-end
-
-
-function projection!(model::M, data::Dual, α, β) where {M<:AbstractTopPushK{<:Hinge}}
-    K = M <: TopPushK ? model.K : 1
-    αs, βs = projection(α, β, model.l.ϑ*model.C, K)
-    α .= αs
-    β .= βs
-    return α, β 
-end
-
-
-# Coordinate descent
-
-
-# -------------------------------------------------------------------------------
-# Dual problem with truncated quadratic loss
-# -------------------------------------------------------------------------------
-# General solver solution
+# Truncated quadratic loss
 function optimize(solver::General, model::M, data::Dual) where {M<:AbstractTopPushK{<:Quadratic}}
 
     α = Convex.Variable(data.nα)
@@ -202,8 +154,46 @@ function optimize(solver::General, model::M, data::Dual) where {M<:AbstractTopPu
 end
 
 
-# Graient descent + projection
-function objective(model::AbstractTopPushK{<:Quadratic}, data::Dual, α, β, s)
+# -------------------------------------------------------------------------------
+# Dual problem - Graient descent solver
+# -------------------------------------------------------------------------------
+function initialization(model::AbstractTopPushK, data::Dual, α0, β0)
+    αβ   = rand(eltype(data.K), data.nαβ)
+    α, β = @views αβ[data.indα], αβ[data.indβ]
+
+    isempty(α0) || (α .= α0)
+    isempty(β0) || (β .= β0)
+
+    projection!(model, data, α, β)
+
+    s  = data.K * vcat(α, β)
+    return α, β, αβ, s
+end
+
+
+# Hinge loss
+function objective(model::AbstractTopPushK{<:Hinge}, data::Dual, α, β, s = data.K*vcat(α, β))
+    - s'*vcat(α, β)/2 + sum(α)/model.l.ϑ
+end
+
+
+function gradient!(model::AbstractTopPushK{<:Hinge}, data::Dual, α, β, s, Δ)
+    Δ             .= .- s
+    Δ[data.indα] .+= 1/model.l.ϑ
+end
+
+
+function projection!(model::M, data::Dual, α, β) where {M<:AbstractTopPushK{<:Hinge}}
+    K = M <: TopPushK ? model.K : 1
+    αs, βs = projection(α, β, model.l.ϑ*model.C, K)
+    α .= αs
+    β .= βs
+    return α, β 
+end
+
+
+# Truncated quadratic loss
+function objective(model::AbstractTopPushK{<:Quadratic}, data::Dual, α, β, s = data.K*vcat(α, β))
     - s'*vcat(α, β)/2 + sum(α)/model.l.ϑ - sum(abs2, α)/(4*model.C*model.l.ϑ^2)
 end
 
@@ -222,5 +212,141 @@ function projection!(model::M, data::Dual, α, β) where {M<:AbstractTopPushK{<:
     return α, β 
 end
 
+# -------------------------------------------------------------------------------
+# Dual problem - Coordinate descent solver
+# -------------------------------------------------------------------------------
+function loss(model::AbstractTopPushK, data::Dual, a::Real, b::Real, Δ::Real)
+    a*Δ^2/2 + b*Δ
+end
 
-# Coordinate descent
+
+function select_k(model::AbstractTopPushK, data::Dual, α, β)
+    rand(1:data.nαβ)
+end
+
+
+function apply!(model::AbstractTopPushK, data::Dual, best::BestUpdate, α, β, αβ, s, αsum, βsort)
+    βsorted!(data, best, β, βsort)
+    best.k <= data.nα && ( αsum .+= best.Δ )
+    αβ[best.k] = best.vars[1]
+    αβ[best.l] = best.vars[2]
+    scores!(data, best, s)
+end
+
+
+# Hinge loss
+function rule_αα!(model::AbstractTopPushK{<:Hinge}, data::Dual, best::BestUpdate, k, l, α, β, s, αsum, βsort)
+
+    αk, αl = α[k], α[l]
+    C, ϑ   = model.C, model.l.ϑ
+
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] 
+    b = - s[k] + s[l]
+    Δ = solution(a, b, max(-αk, αl - ϑ*C), min(ϑ*C - αk, αl))
+
+    vars = (αk = αk + Δ, αl = αl - Δ) 
+    L    = loss(model, data, a, b, Δ)
+    update!(best, k, l, Δ, L, vars)
+end
+
+
+function rule_αβ!(model::M, data::Dual, best::BestUpdate, k, l, α, β, s, αsum, βsort) where {M<:AbstractTopPushK{<:Hinge}}
+
+    αk, βl = α[k], β[l - data.nα]
+    C, ϑ   = model.C, model.l.ϑ
+    M <: TopPush ? K = 1 : K = model.K
+
+    a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] 
+    b = - s[k] - s[l] + 1/ϑ
+
+    if K == 1
+        Δ = solution(a, b, max(-αk, -βl), C*ϑ - αk)
+    else
+        βmax = find_βmax(βsort, β, l - data.nα)
+        Δ    = solution(a, b, max(-αk, -βl, K*βmax - αsum[1]), min(C*ϑ - αk, (αsum[1] - K*βl)/(K-1)))
+    end
+
+    vars = (αk = αk + Δ, βl = βl + Δ)
+    L    = loss(model, data, a, b, Δ)
+    update!(best, k, l, Δ, L, vars)
+end
+
+
+function rule_ββ!(model::M, data::Dual, best::BestUpdate, k, l, α, β, s, αsum, βsort) where {M<:AbstractTopPushK{<:Hinge}}
+
+    βk, βl = β[k - data.nα], β[l - data.nα]
+    C, ϑ   = model.C, model.l.ϑ
+    M <: TopPush ? K = 1 : K = model.K
+
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] 
+    b = - s[k] + s[l]
+
+    if K == 1
+        Δ = solution(a, b, -βk, βl)
+    else
+        Δ = solution(a, b, max(-βk, βl - αsum[1]/K), min(αsum[1]/K - βk, βl))
+    end
+ 
+    vars = (βk = βk + Δ, βl = βl - Δ)
+    L    = loss(model, data, a, b, Δ)
+    update!(best, k, l, Δ, L, vars)
+end
+
+
+# Truncated quadratic loss
+function rule_αα!(model::AbstractTopPushK{<:Quadratic}, data::Dual, best::BestUpdate, k, l, α, β, s, αsum, βsort)
+
+    αk, αl = α[k], α[l]
+    C, ϑ   = model.C, model.l.ϑ
+
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] - 1/(C*ϑ^2) 
+    b = - s[k] + s[l] - (αk - αl)/(2*C*ϑ^2)
+    Δ = solution(a, b, - αk, αl)
+
+    vars = (αk = αk + Δ, αl = αl - Δ) 
+    L    = loss(model, data, a, b, Δ)
+    update!(best, k, l, Δ, L, vars)
+end
+
+
+function rule_αβ!(model::M, data::Dual, best::BestUpdate, k, l, α, β, s, αsum, βsort) where {M<:AbstractTopPushK{<:Quadratic}}
+
+    αk, βl = α[k], β[l - data.nα]
+    C, ϑ   = model.C, model.l.ϑ
+    M <: TopPush ? K = 1 : K = model.K
+
+    a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ^2) 
+    b = - s[k] - s[l] + 1/ϑ - αk/(2*C*ϑ^2)
+
+    if K == 1
+        Δ = solution(a, b, max(-αk, -βl), Inf)
+    else
+        βmax = find_βmax(βsort, β, l - data.nα)
+        Δ    = solution(a, b, max(-αk, -βl, K*βmax - αsum[1]), (αsum[1] - K*βl)/(K-1))
+    end
+
+    vars = (αk = αk + Δ, βl = βl + Δ)
+    L    = loss(model, data, a, b, Δ)
+    update!(best, k, l, Δ, L, vars)
+end
+
+
+function rule_ββ!(model::M, data::Dual, best::BestUpdate, k, l, α, β, s, αsum, βsort) where {M<:AbstractTopPushK{<:Quadratic}}
+
+    βk, βl = β[k - data.nα], β[l - data.nα]
+    C, ϑ   = data.n, model.C, model.l.ϑ
+    M <: TopPush ? K = 1 : K = model.K
+
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] 
+    b = - s[k] + s[l]
+
+    if K == 1
+        Δ = solution(a, b, -βk, βl)
+    else
+        Δ = solution(a, b, max(-βk, βl - αsum[1]/K), min(αsum[1]/K - βk, βl))
+    end
+ 
+    vars = (βk = βk + Δ, βl = βl - Δ)
+    L    = loss(model, data, a, b, Δ)
+    update!(best, k, l, Δ, L, vars)
+end
