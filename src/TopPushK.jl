@@ -225,9 +225,18 @@ function select_k(model::AbstractTopPushK, data::Dual, α, β)
 end
 
 
-function apply!(model::AbstractTopPushK, data::Dual, best::BestUpdate, α, β, αβ, s, αsum, βsort)
+function apply!(model::TopPushK, data::Dual, best::BestUpdate, α, β, αβ, s, αsum, βsort)
     βsorted!(data, best, β, βsort)
-    best.k <= data.nα && ( αsum .+= best.Δ )
+    if best.k <= data.nα && best.l > data.nα 
+        αsum .+= best.Δ
+    end
+    αβ[best.k] = best.vars[1]
+    αβ[best.l] = best.vars[2]
+    scores!(data, best, s)
+end
+
+
+function apply!(model::TopPush, data::Dual, best::BestUpdate, α, β, αβ, s, αsum, βsort)
     αβ[best.k] = best.vars[1]
     αβ[best.l] = best.vars[2]
     scores!(data, best, s)

@@ -239,7 +239,7 @@ function rule_αβ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
     b = - s[k] - s[l] + 1/ϑ1 + 1/ϑ2
 
     # solution 1
-    Δ = solution(a, b, max(-αk, -βl), min(ϑ1*C - αk, βmax - βl))
+    Δ = solution(a, b, max(-αk, -βl), ϑ1*C - αk)
     if βl + Δ <= βmax
         vars = (αk = αk + Δ, βl = βl + Δ, δ = βmax/ϑ2)
         L    = loss(model, data, a, b, vars.δ, Δ)
@@ -266,7 +266,7 @@ function rule_ββ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
     b = - s[k] + s[l]
 
     # solution 1
-    Δ = solution(a, b, max(-βk, βl - βmax), min(βmax - βk, βl))
+    Δ = solution(a, b, -βk, βl)
     if βmax >= max(βk + Δ, βl - Δ)
         vars = (βk = βk + Δ, βl = βl - Δ, δ = βmax/ϑ2)
         L    = loss(model, data, a, b, vars.δ, Δ)
@@ -274,7 +274,7 @@ function rule_ββ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
     end
 
     # solution 2
-    Δ = solution(a, b - n*τ/ϑ2, max(-βk, (βl - βk)/2), βl)
+    Δ = solution(a, b - n*τ/ϑ2, -βk, βl)
     if βk + Δ >= max(βmax, βl - Δ)
         vars = (βk = βk + Δ, βl = βl - Δ, δ = (βk + Δ)/ϑ2)
         L    = loss(model, data, a, b - n*τ/ϑ2, vars.δ, Δ)
@@ -282,7 +282,7 @@ function rule_ββ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
     end
 
     # solution 3
-    Δ = solution(a, b + n*τ/ϑ2, -βk, min((βl - βk)/2, βl)) 
+    Δ = solution(a, b + n*τ/ϑ2, -βk, βl) 
     if βl - Δ >= max(βk + Δ, βmax)
         vars = (βk = βk + Δ, βl = βl - Δ, δ = (βl - Δ)/ϑ2)
         L    = loss(model, data, a, b + n*τ/ϑ2, vars.δ, Δ)

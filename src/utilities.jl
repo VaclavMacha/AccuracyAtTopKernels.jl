@@ -63,7 +63,7 @@ end
 
 
 function select_rule(model::AbstractModel, data::Dual, k, args...)
-    best = BestUpdate(0, 0, 0.0, -Inf, (αk = 0.0, ))
+    best = BestUpdate(1, 2, 0.0, -Inf, (αk = 0.0, αl = 0.0))
 
     for l in 1:data.n
         l == k && continue

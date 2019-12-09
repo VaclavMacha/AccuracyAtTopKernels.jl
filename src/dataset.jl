@@ -16,8 +16,8 @@ end
 function Primal(X::A, y::V) where {A<:AbstractMatrix, V<:AbstractVector}
 
     ybool = Bool.(y)
-    pos = findall(ybool)
-    neg = findall(.~ybool)
+    pos   = findall(ybool)
+    neg   = findall(.~ybool)
 
     dim  = size(X,2)
     n    = length(y)

@@ -97,7 +97,7 @@ function solve(solver::Coordinate, model::PatMat{<:S}, data::Dual, α0 = Float64
         # update coordinates
         k    = select_k(model, data, α, β, δ)
         best = select_rule(model, data, k, α, β, δ, s, βtmp)
-        apply!(model, data, best, α, β, δ, αβδ, s, βtmp)
+        iszero(best.Δ) || apply!(model, data, best, α, β, δ, αβδ, s, βtmp)
 
         # progress
         progress(solver, model, data, iter, α, β, δ[1], s)
@@ -119,7 +119,7 @@ function solve(solver::Coordinate, model::AbstractTopPushK, data::Dual, α0 = Fl
         # update coordinates
         k    = select_k(model, data, α, β)
         best = select_rule(model, data, k, α, β, s, αsum, βsort)
-        apply!(model, data, best, α, β, αβ, s, αsum, βsort)
+        iszero(best.Δ) || apply!(model, data, best, α, β, αβ, s, αsum, βsort)
 
         # progress
         progress(solver, model, data, iter,  α, β, s)

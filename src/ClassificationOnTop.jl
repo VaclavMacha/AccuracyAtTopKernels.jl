@@ -16,41 +16,45 @@ import Flux.Optimise: Descent, ADAM, Momentum, Nesterov, RMSProp,
 export Descent, ADAM, Momentum, Nesterov, RMSProp,
        ADAGrad, AdaMax, ADADelta, AMSGrad, NADAM, ADAMW, RADAM
 
+# types 
 abstract type AbstractSurrogate end
 abstract type AbstractData end
 abstract type AbstractModel end
 abstract type AbstractTopPushK{AbstractSurrogate} <: AbstractModel end
 abstract type AbstractSolver end
 
+
 struct General{S} <: AbstractSolver
     solver::S
-
-    function General(; solver = ECOS.ECOSSolver(verbose = false))
-        new{typeof(solver)}(solver)
-    end
 end
+
+
+function General(; solver::Any = ECOS.ECOSSolver(verbose = false))
+    return General(solver)
+end
+
 
 struct Gradient{I<:Integer, B<:Bool, O} <: AbstractSolver
     maxiter::I
     verbose::B
     optimizer::O
+end
 
-    function Gradient(; maxiter::I   = 1000,
-                        verbose::B   = true,
-                        optimizer::O = Optimise.ADAM()) where {I<:Integer, B<:Bool, O<:Any}
-        new{I, B, O}(maxiter, verbose, optimizer)
-    end
+
+function Gradient(; maxiter::Integer = 1000, verbose::Bool = true, optimizer::Any = Optimise.ADAM())
+    return Gradient(maxiter, verbose, optimizer)
 end
 
 struct Coordinate{I<:Integer, B<:Bool} <: AbstractSolver
-    maxiter::Integer
-    verbose::Bool
-
-    function Coordinate(; maxiter::I = 1000,
-                          verbose::B = true) where {I<:Integer, B<:Bool}
-        new{I, B}(maxiter, verbose)
-    end
+    maxiter::I
+    verbose::B
 end
+
+
+function Coordinate(; maxiter::Integer = 1000, verbose::Bool = true)
+    return Coordinate(maxiter, verbose)
+end
+
 
 mutable struct BestUpdate{I<:Integer, T<:Real}
     k::I
@@ -60,6 +64,8 @@ mutable struct BestUpdate{I<:Integer, T<:Real}
     vars::NamedTuple
 end
 
+
+# includes
 include("surrogates.jl")
 include("dataset.jl")
 
@@ -69,6 +75,5 @@ include("TopPushK.jl")
 include("utilities.jl")
 include("solver.jl")
 include("projections.jl")
-
 
 end # module
