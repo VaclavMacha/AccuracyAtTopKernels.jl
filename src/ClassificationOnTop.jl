@@ -1,7 +1,7 @@
 module ClassificationOnTop
 
 using Statistics, LinearAlgebra
-import Convex, ECOS, Roots, ProgressMeter
+import Convex, ECOS, Roots, Mmap, ProgressMeter
 
 export solve,
        AbstractSolver, General, Gradient, Coordinate,
@@ -15,6 +15,9 @@ import Flux.Optimise: Descent, ADAM, Momentum, Nesterov, RMSProp,
 
 export Descent, ADAM, Momentum, Nesterov, RMSProp,
        ADAGrad, AdaMax, ADADelta, AMSGrad, NADAM, ADAMW, RADAM
+
+import KernelFunctions 
+import KernelFunctions: Kernel, LinearKernel
 
 # types 
 abstract type AbstractSurrogate end
@@ -75,5 +78,6 @@ include("TopPushK.jl")
 include("utilities.jl")
 include("solver.jl")
 include("projections.jl")
+include("kernels.jl")
 
 end # module

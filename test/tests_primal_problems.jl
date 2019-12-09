@@ -45,5 +45,5 @@ function test_primal(model::AbstractModel, data::Primal, maxiter::Integer, optim
     w2, t2 = solve(General(), model, data)
     L2     = ClassificationOnTop.objective(model, data, w2, t2)
     
-    @test L1 <= L2 + atol
+    @test L1 ≈ L2 atol = atol
 end

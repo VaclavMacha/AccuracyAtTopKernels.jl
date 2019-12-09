@@ -214,6 +214,15 @@ function loss(model::PatMat{<:Hinge}, data::Dual, a::Real, b::Real, δ::Real, Δ
 end
 
 
+function apply!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, α, β, δ, αβδ, s, βsort)
+    βsorted!(data, best, β, βsort)
+    αβδ[best.k] = best.vars[1]
+    αβδ[best.l] = best.vars[2]
+    αβδ[end]    = best.vars[3]
+    scores!(data, best, s)
+end
+
+
 function rule_αα!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, βsort)
 
     αk, αl   = α[k], α[l]
@@ -291,19 +300,26 @@ function rule_ββ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
 end
 
 
-function apply!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, α, β, δ, αβδ, s, βsort)
-    βsorted!(data, best, β, βsort)
+# Truncated quadratic loss
+function loss(model::PatMat{<:Quadratic}, data::Dual, a::Real, b::Real, δ::Real, Δ::Real, β2sum)
+    a*Δ^2/2 + b*Δ - β2sum[1]/δ - δ*data.n*model.τ
+end
+
+
+function apply!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, α, β, δ, αβδ, s, β2sum)
+    if best.k > data.nα || best.l > data.nα
+        if best.k <= data.nα && best.l > data.nα
+            β2sum .+= best.Δ*(best.Δ + 2*β[best.l - data.nα])/(4*model.l2.ϑ^2)
+        else 
+            β2sum .+= best.Δ*(2*best.Δ + 2*(β[best.k - data.nα] - β[best.l - data.nα]))/(4*model.l2.ϑ^2)
+        end
+    end
     αβδ[best.k] = best.vars[1]
     αβδ[best.l] = best.vars[2]
     αβδ[end]    = best.vars[3]
     scores!(data, best, s)
 end
 
-
-# Truncated quadratic loss
-function loss(model::PatMat{<:Quadratic}, data::Dual, a::Real, b::Real, δ::Real, Δ::Real, β2sum)
-    a*Δ^2/2 + b*Δ - β2sum[1]/δ - δ*data.n*model.τ
-end
 
 function rule_αα!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, β2sum)
 
@@ -355,19 +371,4 @@ function rule_ββ!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k,
     vars = (βk = βk + Δ, βl = βl - Δ, δ = δnew)
     L    = loss(model, data, a, b, vars.δ, Δ, β2sum)
     update!(best, k, l, Δ, L, vars)
-end
-
-
-function apply!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, α, β, δ, αβδ, s, β2sum)
-    if best.k > data.nα || best.l > data.nα
-        if best.k <= data.nα && best.l > data.nα
-            β2sum .+= best.Δ*(best.Δ + 2*β[best.l - data.nα])/(4*model.l2.ϑ^2)
-        else 
-            β2sum .+= best.Δ*(2*best.Δ + 2*(β[best.k - data.nα] - β[best.l - data.nα]))/(4*model.l2.ϑ^2)
-        end
-    end
-    αβδ[best.k] = best.vars[1]
-    αβδ[best.l] = best.vars[2]
-    αβδ[end]    = best.vars[3]
-    scores!(data, best, s)
 end
