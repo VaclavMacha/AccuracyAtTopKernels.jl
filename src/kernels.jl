@@ -25,41 +25,41 @@ end
 
 function kernelmatrix(model::AbstractModel,
                       Xtrain::AbstractArray,
-                      y::BitArray{1},
-                      kernel::Kernel = LinearKernel();
+                      ytrain::BitArray{1};
+                      kernel::Kernel = LinearKernel(),
                       ε::Real = 1e-10)
 
-    X, n, nα, nβ = prepare(model, Xtrain, y)
+    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
     K = KernelFunctions.kernelmatrix(kernel, X; obsdim = 1)
     K[1:nα, nα+1:end] .*= -1
     K[nα+1:end, 1:nα] .*= -1
     K[:, :] += I*ε
-    return K
+    return K, n, nα, nβ
 end
 
 
 function kernelmatrix(model::AbstractModel,
                       Xtrain::AbstractArray,
-                      Xtest::AbstractArray,
-                      y::BitArray{1},
+                      ytrain::BitArray{1},
+                      Xtest::AbstractArray;
                       kernel::Kernel = LinearKernel())
 
-    X, n, nα, nβ = prepare(model, Xtrain, y)
+    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
     K = KernelFunctions.kernelmatrix(kernel, X, Xtest; obsdim = 1)
     K[nα+1:end, :] .*= -1
-    return K
+    return K, n, nα, nβ
 end
 
 
 function save_kernelmatrix(model::AbstractModel,
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
-                           y::BitArray{1},
-                           kernel::Kernel = LinearKernel();
+                           ytrain::BitArray{1};
+                           kernel::Kernel = LinearKernel(),
                            ε::Real = 1e-10,
                            T::DataType = Float32)
 
-    X, n, nα, nβ = prepare(model, Xtrain, y)
+    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
 
     io = open(file, "w+");
     write(io, n)
@@ -84,12 +84,12 @@ end
 function save_kernelmatrix(model::AbstractModel,
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
-                           Xtest::AbstractMatrix,
-                           y::BitArray{1},
-                           kernel::Kernel = LinearKernel();
+                           ytrain::BitArray{1},
+                           Xtest::AbstractMatrix;
+                           kernel::Kernel = LinearKernel(),
                            T::DataType = Float32)
 
-    X, n, nα, nβ = prepare(model, Xtrain, y)
+    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
     M, N = size(X,1), size(Xtest,1)
 
     io = open(file, "w+");

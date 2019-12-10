@@ -40,7 +40,7 @@ function getmatrix(model::PatMat, kernel, X::AbstractMatrix, y::BitArray{1}; ε:
 end
 
 
-function getmatrix(model::PatMat, kernel, X::AbstractMatrix, Y::AbstractMatrix, y::BitArray{1})
+function getmatrix(model::PatMat, kernel, X::AbstractMatrix, y::BitArray{1}, Y::AbstractMatrix)
     pos = findall(y)
     nα  = length(pos)
     K   = KernelFunctions.kernelmatrix(kernel, vcat(X[pos,:], X), Y; obsdim = 1)
@@ -61,7 +61,7 @@ function getmatrix(model::AbstractTopPushK, kernel, X::AbstractMatrix, y::BitArr
 end
 
 
-function getmatrix(model::AbstractTopPushK, kernel, X::AbstractMatrix, Y::AbstractMatrix, y::BitArray{1})
+function getmatrix(model::AbstractTopPushK, kernel, X::AbstractMatrix, y::BitArray{1}, Y::AbstractMatrix)
     pos = findall(y)
     neg = findall(.~y)
     nα  = length(pos)
@@ -73,15 +73,15 @@ end
 
 function test_kernelmatrix(model, kernel, X, Y, y; ε::Real = 1e-5, atol::Real = 1e-10)
     
-    ClassificationOnTop.save_kernelmatrix(model, "X.bin", X, y, kernel; ε = ε, T = Float64)
-    ClassificationOnTop.save_kernelmatrix(model, "XY.bin", X, Y, y, kernel; T = Float64)
+    ClassificationOnTop.save_kernelmatrix(model, "X.bin", X, y; kernel = kernel, ε = ε, T = Float64)
+    ClassificationOnTop.save_kernelmatrix(model, "XY.bin", X, y, Y; kernel = kernel, T = Float64)
 
     K1 = getmatrix(model, kernel, X, y; ε = ε)
-    K2 = ClassificationOnTop.kernelmatrix(model, X, y, kernel; ε = ε)
+    K2, = ClassificationOnTop.kernelmatrix(model, X, y; kernel = kernel, ε = ε)
     K3, n, nα, nβ, ioX = ClassificationOnTop.load_kernelmatrix("X.bin"; T = Float64)
 
-    K4 = getmatrix(model, kernel, X, Y, y)
-    K5 = ClassificationOnTop.kernelmatrix(model, X, Y, y, kernel)
+    K4 = getmatrix(model, kernel, X, y, Y)
+    K5, = ClassificationOnTop.kernelmatrix(model, X, y, Y; kernel = kernel)
     K6, n, nα, nβ, ioXY = ClassificationOnTop.load_kernelmatrix("XY.bin"; T = Float64)
 
 
