@@ -3,7 +3,7 @@ module ClassificationOnTop
 using Statistics, LinearAlgebra
 import Convex, ECOS, Roots, Mmap, ProgressMeter
 
-export solve,
+export solve, scores, predict,
        AbstractSolver, General, Gradient, Coordinate,
        AbstractSurrogate, Hinge, Quadratic, Exponential,
        AbstractModel, AbstractTopPushK, PatMat, TopPushK, TopPush,
