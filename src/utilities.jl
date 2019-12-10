@@ -116,3 +116,86 @@ function βsorted!(data::Dual, best::BestUpdate, β, βsort)
     end
 end
 
+
+# -------------------------------------------------------------------------------
+# Scores
+# -------------------------------------------------------------------------------
+# Primal problems
+function scores!(data::Primal, w::AbstractVector, s::AbstractVector)
+    s .= data.X * w
+end
+
+
+function scores(w::AbstractVector, X::AbstractVector)
+    X'*w
+end
+
+
+function scores(w::AbstractVector, X::AbstractMatrix)
+    X*w
+end
+
+
+# Dual problems
+function scores!(data::Dual, α::AbstractVector, β::AbstractVector, s::AbstractVector)
+    s .= data.K * vcat(α, β)
+end
+
+
+function scores(K::AbstractMatrix, α::AbstractVector, β::AbstractVector)
+    vec(vcat(α, β)'*K)
+end
+
+
+function scores(model::AbstractModel,
+                Xtrain::AbstractMatrix,
+                ytrain::BitArray{1},
+                α::AbstractVector,
+                β::AbstractVector,
+                Xtest::AbstractMatrix = Xtrain;
+                kernel::Kernel = LinearKernel())
+    
+    K, = kernelmatrix(model, Xtrain, ytrain, Xtest; kernel = kernel)
+    return scores(K, α, β)
+end
+
+
+function scores(file::AbstractString, α::AbstractVector, β::AbstractVector; T::DataType = Float32)
+    
+    K, n, nα, nβ, io = load_kernelmatrix(file; T = T)
+    s = scores(K, α, β)
+    close(io)
+    return s
+end
+
+
+# -------------------------------------------------------------------------------
+# Predict
+# -------------------------------------------------------------------------------
+# Primal problems
+function predict(w::AbstractVector, t::Real, X)
+    scores(w, t, X) .>= t 
+end
+
+
+# Dual problems
+function predict(K::AbstractMatrix, α::AbstractVector, β::AbstractVector)
+    scores(K, α, β) .>= 0
+end
+
+
+function predict(model::AbstractModel,
+                 Xtrain::AbstractMatrix,
+                 ytrain::BitArray{1},
+                 α::AbstractVector,
+                 β::AbstractVector,
+                 Xtest::AbstractMatrix = Xtrain;
+                 kernel::Kernel = LinearKernel())
+    
+    return scores(model, Xtrain, ytrain, α, β, Xtest; kernel = kernel) .>= 0
+end
+
+
+function predict(file::AbstractString, α::AbstractVector, β::AbstractVector; T::DataType = Float32)
+    scores(file, α, β; T = T) .>= 0
+end

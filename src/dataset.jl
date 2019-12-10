@@ -13,6 +13,7 @@ struct Primal{I<:Integer, V1<:AbstractVector, V2<:AbstractVector, A<:AbstractMat
     nneg::I
 end
 
+
 function Primal(X::A, y::V) where {A<:AbstractMatrix, V<:AbstractVector}
 
     ybool = Bool.(y)
@@ -25,11 +26,6 @@ function Primal(X::A, y::V) where {A<:AbstractMatrix, V<:AbstractVector}
     nneg = length(neg)
 
     return Primal(X, y, pos, neg, dim, n, npos, nneg)
-end
-
-
-function scores!(data::Primal, w::AbstractVector, s::AbstractVector)
-    s .= data.X * w
 end
 
 
@@ -47,7 +43,8 @@ struct Dual{I<:Integer, V<:AbstractVector, A<:AbstractMatrix} <: AbstractData
     nαβ::I
 end
 
-function Dual(K::A, n::I, nα::I, nβ::I = size(K,1) - nα) where {A<:AbstractMatrix, I<:Integer} 
+
+function Dual(K::AbstractMatrix, n::Integer, nα::Integer, nβ::Integer = size(K,1) - nα) 
     indα = 1:nα 
     indβ = (nα + 1):(nα + nβ)
 
@@ -55,6 +52,15 @@ function Dual(K::A, n::I, nα::I, nβ::I = size(K,1) - nα) where {A<:AbstractMa
 end
 
 
-function scores!(data::Dual, α::AbstractVector, β::AbstractVector, s::AbstractVector)
-    s .= data.K * vcat(α, β)
+function Dual(model::AbstractModel, X::AbstractMatrix, y::BitArray{1}; kernel::Kernel = LinearKernel())
+    
+    K, n, nα, nβ = kernelmatrix(model, X, y; kernel = kernel)
+    return Dual(K, n, nα, nβ)
+end
+
+
+function Dual(file::AbstractString; T::DataType = Float32)
+    
+    K, n, nα, nβ, io = load_kernelmatrix(file; T = T)
+    return Dual(K, n, nα, nβ), io
 end
