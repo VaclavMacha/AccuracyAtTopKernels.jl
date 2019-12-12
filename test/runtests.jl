@@ -1,4 +1,6 @@
-using ClassificationOnTop, Test, Distributions, LinearAlgebra, Random
+using ClassificationOnTop
+
+using Test, Distributions, LinearAlgebra, Random
 import KernelFunctions
 
 include("./tests_surrogates.jl")
@@ -7,6 +9,8 @@ include("./tests_projections.jl")
 include("./tests_primal_problems.jl")
 include("./tests_dual_problems.jl")
 include("./tests_kernels.jl")
+include("./tests_scores.jl")
+
 
 @time @testset "all tests" begin
     @testset "tests surrogates" begin
@@ -34,4 +38,8 @@ include("./tests_kernels.jl")
     @testset "tests kernels" begin
         test_kernels()
     end
-end
+
+    @testset "tests scores" begin
+        test_kernels()
+    end
+end;

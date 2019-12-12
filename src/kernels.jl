@@ -1,53 +1,51 @@
+# -------------------------------------------------------------------------------
+# Prepare function
+# -------------------------------------------------------------------------------
 function prepare(model::PatMat, X::AbstractMatrix, y::BitArray{1})
-   
-    pos = findall(y)
-    n   = length(y)
-    nα  = length(pos)
-    nβ  = n
-    XX  = vcat(X[pos, :], X)
 
-    return XX, n, nα, nβ
+    ind_pos  = findall(y)
+    ind_neg  = findall(.~y)
+    nα       = length(ind_pos)
+    nβ       = length(y)
+    inv_perm = nα .+ (1:nβ)
+ 
+    XX  = vcat(X[ind_pos, :], X)
+
+    return XX, nα, nβ, ind_pos, ind_neg, inv_perm
 end
 
 
 function prepare(model::AbstractTopPushK, X::AbstractMatrix, y::BitArray{1})
-   
-    pos = findall(y)
-    neg = findall(.~y)
-    n   = length(y)
-    nα  = length(pos)
-    nβ  = length(neg)
-    XX  = vcat(X[pos, :], X[neg, :])
 
-    return XX, n, nα, nβ
+    ind_pos  = findall(y)
+    ind_neg  = findall(.~y)
+    nα       = length(ind_pos)
+    nβ       = length(ind_neg)
+    inv_perm = invperm(vcat(ind_pos, ind_neg))
+ 
+    XX  = vcat(X[ind_pos, :], X[ind_neg, :])
+
+    return XX, nα, nβ, ind_pos, ind_neg, inv_perm
 end
 
 
+# -------------------------------------------------------------------------------
+# DTrain kernel matrix
+# -------------------------------------------------------------------------------
 function kernelmatrix(model::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::BitArray{1};
                       kernel::Kernel = LinearKernel(),
                       ε::Real = 1e-10)
 
-    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
+    X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(model, Xtrain, ytrain)
+    n = length(ytrain)
+
     K = KernelFunctions.kernelmatrix(kernel, X; obsdim = 1)
-    K[1:nα, nα+1:end] .*= -1
-    K[nα+1:end, 1:nα] .*= -1
+    K[1:nα, nα+1:end]   .*= -1
+    K[(nα+1):end, 1:nα] .*= -1
     K[:, :] += I*ε
-    return K, n, nα, nβ
-end
-
-
-function kernelmatrix(model::AbstractModel,
-                      Xtrain::AbstractArray,
-                      ytrain::BitArray{1},
-                      Xtest::AbstractArray;
-                      kernel::Kernel = LinearKernel())
-
-    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
-    K = KernelFunctions.kernelmatrix(kernel, X, Xtest; obsdim = 1)
-    K[nα+1:end, :] .*= -1
-    return K, n, nα, nβ
+    return K, n, nα, nβ, ind_pos, ind_neg, inv_perm
 end
 
 
@@ -56,28 +54,110 @@ function save_kernelmatrix(model::AbstractModel,
                            Xtrain::AbstractMatrix,
                            ytrain::BitArray{1};
                            kernel::Kernel = LinearKernel(),
-                           ε::Real = 1e-10,
-                           T::DataType = Float32)
+                           ε::Real        = 1e-10,
+                           T::DataType    = Float32)
 
-    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
+    X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(model, Xtrain, ytrain)
 
+    n, npos, nneg = length(inv_perm), length(ind_pos), length(ind_neg)
+    N, M          = nα + nβ, nα + nβ
+
+    # auxiliary 
     io = open(file, "w+");
-    write(io, n)
-    write(io, nα)
-    write(io, nβ)
-    write(io, nα + nβ)
-    write(io, nα + nβ)
-    K = Mmap.mmap(io, Matrix{T}, (nα + nβ, nα + nβ))
-    fill_kernelmatrix!(K, kernel, X, X; obsdim = 1)
+    write(io, 0)
+    write(io, [nα, nβ, n, npos, nneg, M, N])
+    write(io, ind_pos)
+    write(io, ind_neg)
+    write(io, inv_perm)
 
+    # kernel matrix
+    K = Mmap.mmap(io, Matrix{T}, (N, M))
+    fill_kernelmatrix!(K, kernel, X, X; obsdim = 1)
     K[1:nα, nα+1:end] .*= -1
-    K[nα+1:end, 1:nα] .*= -1
+    K[(nα+1):end, 1:nα] .*= -1
     K[:, :] += I*ε
-    
     Mmap.sync!(K)
     close(io)
 
     return 
+end
+
+
+# -------------------------------------------------------------------------------
+# DValidation kernel matrix
+# -------------------------------------------------------------------------------
+function kernelmatrix(model::AbstractModel,
+                      Xtrain::AbstractArray,
+                      ytrain::BitArray{1},
+                      Xvalid::AbstractArray,
+                      yvalid::BitArray{1};
+                      kernel::Kernel = LinearKernel(),
+                      ε::Real = 1e-10)
+
+    X, nα, nβ, = prepare(model, Xtrain, ytrain)
+    n          = length(yvalid)
+    ind_pos    = findall(yvalid)
+    ind_neg    = findall(.~yvalid)
+    inv_perm   = 1:length(yvalid)
+
+    K = KernelFunctions.kernelmatrix(kernel, X, Xvalid; obsdim = 1)
+    K[(nα+1):end, :] .*= -1
+    return K, n, nα, nβ, ind_pos, ind_neg, inv_perm
+end
+
+
+function save_kernelmatrix(model::AbstractModel,
+                           file::AbstractString,
+                           Xtrain::AbstractMatrix,
+                           ytrain::BitArray{1},
+                           Xvalid::AbstractMatrix,
+                           yvalid::BitArray{1};
+                           kernel::Kernel = LinearKernel(),
+                           T::DataType    = Float32)
+
+    X, nα, nβ, = prepare(model, Xtrain, ytrain)
+    ind_pos    = findall(yvalid)
+    ind_neg    = findall(.~yvalid)
+    inv_perm   = 1:length(yvalid)
+
+    n, npos, nneg = length(inv_perm), length(ind_pos), length(ind_neg)
+    M, N          = size(X,1), size(Xvalid,1)
+
+    # auxiliary
+    io = open(file, "w+");
+    write(io, 1)
+    write(io, [nα, nβ, n, npos, nneg, M, N])
+    write(io, ind_pos)
+    write(io, ind_neg)
+    write(io, inv_perm)
+
+    # kernel matrix
+    K = Mmap.mmap(io, Matrix{T}, (M, N))
+    fill_kernelmatrix!(K, kernel, X, Xvalid; obsdim = 1)
+    K[nα+1:end, :] .*= -1
+    Mmap.sync!(K)
+    close(io)
+
+    return
+end
+
+
+# -------------------------------------------------------------------------------
+# DTest kernel matrix
+# -------------------------------------------------------------------------------
+function kernelmatrix(model::AbstractModel,
+                      Xtrain::AbstractArray,
+                      ytrain::BitArray{1},
+                      Xtest::AbstractArray;
+                      kernel::Kernel = LinearKernel())
+
+    X, nα, nβ, = prepare(model, Xtrain, ytrain)
+    n = size(Xtest, 1)
+
+    K = KernelFunctions.kernelmatrix(kernel, X, Xtest; obsdim = 1)
+    K[(nα+1):end, :] .*= -1
+
+    return K, n, nα, nβ
 end
 
 
@@ -89,48 +169,67 @@ function save_kernelmatrix(model::AbstractModel,
                            kernel::Kernel = LinearKernel(),
                            T::DataType = Float32)
 
-    X, n, nα, nβ = prepare(model, Xtrain, ytrain)
-    M, N = size(X,1), size(Xtest,1)
+    X, nα, nβ, = prepare(model, Xtrain, ytrain)
+    n          = size(Xtest, 1)
+    M, N       = size(X,1), size(Xtest,1)
 
+    # auxiliary 
     io = open(file, "w+");
-    write(io, n)
-    write(io, nα)
-    write(io, nβ)
-    write(io, M)
-    write(io, N)
+    write(io, 2)
+    write(io, [nα, nβ, n, M, N])
+
+    # kernel matrix
     K = Mmap.mmap(io, Matrix{T}, (M, N))
     fill_kernelmatrix!(K, kernel, X, Xtest; obsdim = 1)
-
     K[nα+1:end, :] .*= -1
-    
     Mmap.sync!(K)
     close(io)
+
+    return
 end
 
 
+# -------------------------------------------------------------------------------
+# Fill function for large matrices
+# -------------------------------------------------------------------------------
 function fill_kernelmatrix!(K::AbstractMatrix,
                             kernel::Kernel,
-                            Xtrain::AbstractMatrix,
-                            Xtest::AbstractMatrix;
+                            X::AbstractMatrix,
+                            Y::AbstractMatrix;
                             max_chunk_size::Real = 1e8,
                             obsdim::Integer = 2)
    
-    n    = size(Xtrain,1)
+    n    = size(X,1)
     Rows = Iterators.partition(1:n, floor(Int, max(max_chunk_size, n)/n))
 
     ProgressMeter.@showprogress "Kernel matrix calculation in progress: " for rows in Rows
-        @views KernelFunctions.kernelmatrix!(K[rows, :], kernel, Xtrain[rows,:], Xtest; obsdim = obsdim)
+        @views KernelFunctions.kernelmatrix!(K[rows, :], kernel, X[rows,:], Y; obsdim = obsdim)
     end
 end
 
 
+# -------------------------------------------------------------------------------
+# Load function
+# -------------------------------------------------------------------------------
 function load_kernelmatrix(file::AbstractString; T::DataType = Float32)
-    io  = open(file, "r");
-    n   = read(io, Int)
-    nα  = read(io, Int)
-    nβ  = read(io, Int)
-    M   = read(io, Int)
-    N   = read(io, Int)
-    K   = Mmap.mmap(io, Matrix{T}, (M, N))
-    return K, n, nα, nβ, io
+    io   = open(file, "r");
+    type = read(io, Int)
+
+    type in [0,1,2] || @error "Unknown kernel matrix type $(type)"
+
+    if type == 0 || type == 1
+        nα, nβ, n, npos, nneg, M, N = [read(io, Int) for k in 1:7]
+
+        ind_pos  = [read(io, Int) for k in 1:npos] 
+        ind_neg  = [read(io, Int) for k in 1:nneg]
+        inv_perm = [read(io, Int) for k in 1:n]
+        K        = Mmap.mmap(io, Matrix{T}, (M, N))
+
+        return type, io, (K, n, nα, nβ, ind_pos, ind_neg, inv_perm)
+    elseif type == 2
+        nα, nβ, n, M, N = [read(io, Int) for k in 1:5]
+        
+        K = Mmap.mmap(io, Matrix{T}, (M, N))
+        return type, io, (K, n, nα, nβ)
+    end
 end

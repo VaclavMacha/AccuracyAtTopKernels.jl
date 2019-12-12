@@ -62,7 +62,7 @@ function update!(best::BestUpdate, k, l, Δ, L, vars)
 end
 
 
-function select_rule(model::AbstractModel, data::Dual, k, args...)
+function select_rule(model::AbstractModel, data::Dual{<:DTrain}, k, args...)
     best = BestUpdate(1, 2, 0.0, -Inf, (αk = 0.0, αl = 0.0))
 
     for l in 1:data.n
@@ -82,7 +82,7 @@ function select_rule(model::AbstractModel, data::Dual, k, args...)
 end
 
 
-function scores!(data::Dual, best::BestUpdate, s)
+function scores!(data::Dual{<:DTrain}, best::BestUpdate, s)
     if best.k <= data.nα && best.l > data.nα
         s .+= best.Δ*(data.K[:, best.k] + data.K[:, best.l])
     else 
@@ -105,7 +105,7 @@ function find_βmax(βsort, β, k, l)
 end
 
 
-function βsorted!(data::Dual, best::BestUpdate, β, βsort)
+function βsorted!(data::Dual{<:DTrain}, best::BestUpdate, β, βsort)
     if haskey(best.vars, :βk)
         deleteat!(βsort, searchsortedfirst(βsort, β[best.k - data.nα]; rev = true))
         insert!(βsort, searchsortedfirst(βsort, best.vars.βk; rev = true), best.vars.βk)
@@ -118,84 +118,64 @@ end
 
 
 # -------------------------------------------------------------------------------
-# Scores
+# Objective from named tuples
 # -------------------------------------------------------------------------------
 # Primal problems
-function scores!(data::Primal, w::AbstractVector, s::AbstractVector)
-    s .= data.X * w
-end
-
-
-function scores(w::AbstractVector, X::AbstractVector)
-    X'*w
-end
-
-
-function scores(w::AbstractVector, X::AbstractMatrix)
-    X*w
+function objective(model::AbstractModel, data::Primal, solution::NamedTuple)
+    objective(model, data, solution.w, solution.t)
 end
 
 
 # Dual problems
-function scores!(data::Dual, α::AbstractVector, β::AbstractVector, s::AbstractVector)
-    s .= data.K * vcat(α, β)
+function objective(model::PatMat, data::Dual{<:DTrain}, solution::NamedTuple)
+    objective(model, data, solution.α, solution.β, solution.δ)
 end
 
 
-function scores(K::AbstractMatrix, α::AbstractVector, β::AbstractVector)
-    vec(vcat(α, β)'*K)
-end
-
-
-function scores(model::AbstractModel,
-                Xtrain::AbstractMatrix,
-                ytrain::BitArray{1},
-                α::AbstractVector,
-                β::AbstractVector,
-                Xtest::AbstractMatrix = Xtrain;
-                kernel::Kernel = LinearKernel())
-    
-    K, = kernelmatrix(model, Xtrain, ytrain, Xtest; kernel = kernel)
-    return scores(K, α, β)
-end
-
-
-function scores(file::AbstractString, α::AbstractVector, β::AbstractVector; T::DataType = Float32)
-    
-    K, n, nα, nβ, io = load_kernelmatrix(file; T = T)
-    s = scores(K, α, β)
-    close(io)
-    return s
+function objective(model::AbstractTopPushK, data::Dual{<:DTrain}, solution::NamedTuple)
+    objective(model, data, solution.α, solution.β)
 end
 
 
 # -------------------------------------------------------------------------------
-# Predict
+# Exact thresholds
 # -------------------------------------------------------------------------------
+function exact_threshold(model::AbstractModel, data::Dual{<:Union{DTrain, DValidation}}, w::AbstractVector, T::Real)
+    exact_threshold(model, data, scores(model, data, w))
+end
+
+
+function exact_threshold(model::AbstractModel, data::Dual{<:Union{DTrain, DValidation}}, α::AbstractVector, β::AbstractVector)
+    exact_threshold(model, data, scores(model, data, α, β))
+end
+
 # Primal problems
-function predict(w::AbstractVector, t::Real, X)
-    scores(w, t, X) .>= t 
+function exact_threshold(model::PatMat, data::Primal, s::AbstractVector)
+    any(isnan.(s)) ? NaN : quantile(s, 1 - model.τ)
+end
+
+
+function exact_threshold(model::TopPushK, data::Primal, s::AbstractVector)
+    mean(partialsort(s[data.ind_neg], 1:model.K, rev = true))
+end
+
+
+function exact_threshold(model::TopPush, data::Primal, s::AbstractVector)
+    maximum(s[data.ind_neg])
 end
 
 
 # Dual problems
-function predict(K::AbstractMatrix, α::AbstractVector, β::AbstractVector)
-    scores(K, α, β) .>= 0
+function exact_threshold(model::PatMat, data::Dual{<:Union{DTrain, DValidation}}, s::AbstractVector)
+    any(isnan.(s)) ? NaN : quantile(s, 1 - model.τ)
 end
 
 
-function predict(model::AbstractModel,
-                 Xtrain::AbstractMatrix,
-                 ytrain::BitArray{1},
-                 α::AbstractVector,
-                 β::AbstractVector,
-                 Xtest::AbstractMatrix = Xtrain;
-                 kernel::Kernel = LinearKernel())
-    
-    return scores(model, Xtrain, ytrain, α, β, Xtest; kernel = kernel) .>= 0
+function exact_threshold(model::TopPushK, data::Dual{<:Union{DTrain, DValidation}}, s::AbstractVector)
+    mean(partialsort(s[data.type.ind_neg], 1:model.K, rev = true))
 end
 
 
-function predict(file::AbstractString, α::AbstractVector, β::AbstractVector; T::DataType = Float32)
-    scores(file, α, β; T = T) .>= 0
+function exact_threshold(model::TopPush, data::Dual{<:Union{DTrain, DValidation}}, s::AbstractVector)
+    maximum(s[data.type.ind_neg])
 end

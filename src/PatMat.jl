@@ -18,8 +18,8 @@ end
 # -------------------------------------------------------------------------------
 function optimize(solver::General, model::PatMat, data::Primal)
 
-    Xpos = @view data.X[data.pos, :]
-    Xneg = @view data.X[data.neg, :]
+    Xpos = @view data.X[data.ind_pos, :]
+    Xneg = @view data.X[data.ind_neg, :]
 
     w = Convex.Variable(data.dim)
     t = Convex.Variable()
@@ -44,14 +44,14 @@ function initialization(model::PatMat, data::Primal, w0)
     w = zeros(eltype(data.X), data.dim)
 
     isempty(w0) || (w .= w0) 
-    s = data.X * w
+    s = scores(model, data, w)
     Δ = zero(w)
     return w, s, Δ
 end
 
 
 function objective(model::PatMat, data::Primal, w, t, s = data.X*w)
-    w'*w/2 + model.C * sum(model.l1.value.(t .- s[data.pos]))
+    w'*w/2 + model.C * sum(model.l1.value.(t .- s[data.ind_pos]))
 end
 
 
@@ -62,11 +62,11 @@ end
 
 function gradient!(model::PatMat, data::Primal, w, s, Δ)
     t   = threshold(model, data, s)
-    ∇l1 = model.l1.gradient.(t .- s[data.pos])
+    ∇l1 = model.l1.gradient.(t .- s[data.ind_pos])
     ∇l2 = model.l2.gradient.(s .- t)
     ∇t  = data.X'*∇l2/sum(∇l2)
 
-    Δ .= w .+ model.C .* (sum(∇l1)*∇t .- data.X[data.pos,:]'*∇l1)
+    Δ .= w .+ model.C .* (sum(∇l1)*∇t .- data.X[data.ind_pos,:]'*∇l1)
 end
 
 
@@ -74,7 +74,7 @@ end
 # Dual problem - General solver
 # -------------------------------------------------------------------------------
 # Hinge loss
-function optimize(solver::General, model::PatMat{<:Hinge}, data::Dual)
+function optimize(solver::General, model::PatMat{<:Hinge}, data::Dual{<:DTrain})
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
@@ -96,7 +96,7 @@ end
 
 
 # Truncated quadratic loss
-function optimize(solver::General, model::PatMat{<:Quadratic}, data::Dual)
+function optimize(solver::General, model::PatMat{<:Quadratic}, data::Dual{<:DTrain})
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
@@ -121,9 +121,9 @@ end
 # -------------------------------------------------------------------------------
 # Dual problem - Graient descent solver
 # -------------------------------------------------------------------------------
-function initialization(model::PatMat, data::Dual, α0, β0)
-    αβδ     = rand(eltype(data.K), data.nαβ + 1)
-    α, β, δ = @views αβδ[data.indα], αβδ[data.indβ], αβδ[[end]]
+function initialization(model::PatMat, data::Dual{<:DTrain}, α0, β0)
+    αβδ     = rand(eltype(data.K), data.nα + data.nβ + 1)
+    α, β, δ = @views αβδ[data.ind_α], αβδ[data.ind_β], αβδ[[end]]
 
     isempty(α0) || (α .= α0)
     isempty(β0) || (β .= β0)
@@ -135,12 +135,12 @@ function initialization(model::PatMat, data::Dual, α0, β0)
 end
 
 
-function init_δ(model::PatMat{<:Hinge}, data::Dual, α0, β0)
+function init_δ(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, α0, β0)
     maximum(β0)/model.l1.ϑ
 end
 
 
-function init_δ(model::PatMat{<:Quadratic}, data::Dual, α0, β0)
+function init_δ(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, α0, β0)
     δ0 = sqrt(sum(abs2, β0)/(4*data.n*model.τ*model.l2.ϑ^2))
     iszero(δ0) && (δ0 += 1e-8)
     return δ0
@@ -148,20 +148,20 @@ end
 
 
 # Hinge loss
-function objective(model::PatMat{<:Hinge}, data::Dual, α, β, δ, s = data.K*vcat(α, β))
+function objective(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, α, β, δ, s = data.K * vcat(α, β))
     - s'*vcat(α, β)/2 + sum(α)/model.l1.ϑ + sum(β)/model.l2.ϑ - δ*data.n*model.τ
 end
 
 
-function gradient!(model::PatMat{<:Hinge}, data::Dual, α, β, δ, s, Δ)
+function gradient!(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, α, β, δ, s, Δ)
     Δ[1:end-1]    .= .- s
-    Δ[data.indα] .+= 1/model.l1.ϑ
-    Δ[data.indβ] .+= 1/model.l2.ϑ
+    Δ[data.ind_α] .+= 1/model.l1.ϑ
+    Δ[data.ind_β] .+= 1/model.l2.ϑ
     Δ[end]         = - data.n*model.τ
 end
 
 
-function projection!(model::PatMat{<:Hinge}, data::Dual, α, β, δ)
+function projection!(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, α, β, δ)
      αs, βs, δs = projection(α, β, δ[1], model.l1.ϑ*model.C, model.l2.ϑ)
      α .= αs
      β .= βs
@@ -171,7 +171,7 @@ end
 
 
 # Truncated quadratic loss
-function objective(model::PatMat{<:Quadratic}, data::Dual, α, β, δ, s = data.K*vcat(α, β))
+function objective(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, α, β, δ, s = data.K * vcat(α, β))
     return - s'*vcat(α, β)/2 +
            sum(α)/model.l1.ϑ - sum(abs2, α)/(4*model.C*model.l1.ϑ^2) +
            sum(β)/model.l2.ϑ - sum(abs2, β)/(4*δ*model.l2.ϑ^2) -
@@ -179,15 +179,15 @@ function objective(model::PatMat{<:Quadratic}, data::Dual, α, β, δ, s = data.
 end
 
 
-function gradient!(model::PatMat{<:Quadratic}, data::Dual, α, β, δ, s, Δ)
+function gradient!(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, α, β, δ, s, Δ)
     Δ[1:end-1]    .= .- s
-    Δ[data.indα] .+= 1/model.l1.ϑ .- α/(2*model.l1.ϑ^2*model.C)
-    Δ[data.indβ] .+= 1/model.l2.ϑ .- β/(2*model.l2.ϑ^2*δ[1])
+    Δ[data.ind_α] .+= 1/model.l1.ϑ .- α/(2*model.l1.ϑ^2*model.C)
+    Δ[data.ind_β] .+= 1/model.l2.ϑ .- β/(2*model.l2.ϑ^2*δ[1])
     Δ[end]         = sum(abs2, β)/(4*model.l2.ϑ^2*δ[1]^2) - data.n*model.τ
 end
 
 
-function projection!(model::PatMat{<:Quadratic}, data::Dual, α, β, δ)
+function projection!(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, α, β, δ)
      αs, βs, δs = projection(α, β, δ[1])
      α .= αs
      β .= βs
@@ -199,22 +199,22 @@ end
 # -------------------------------------------------------------------------------
 # Dual problem - Coordinate descent solver
 # -------------------------------------------------------------------------------
-function select_k(model::PatMat, data::Dual, α, β, δ)
+function select_k(model::PatMat, data::Dual{<:DTrain}, α, β, δ)
     if rand() <= 0.9
         return data.nα + findmax(β)[2]
     else
-        return rand(1:data.nαβ)
+        return rand(1:(data.nα + data.nβ))
     end
 end
 
 
 # Hinge loss
-function loss(model::PatMat{<:Hinge}, data::Dual, a::Real, b::Real, δ::Real, Δ::Real)
+function loss(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, a::Real, b::Real, δ::Real, Δ::Real)
     a*Δ^2/2 + b*Δ - δ*data.n*model.τ
 end
 
 
-function apply!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, α, β, δ, αβδ, s, βsort)
+function apply!(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, best::BestUpdate, α, β, δ, αβδ, s, βsort)
     βsorted!(data, best, β, βsort)
     αβδ[best.k] = best.vars[1]
     αβδ[best.l] = best.vars[2]
@@ -223,7 +223,7 @@ function apply!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, α, β, δ
 end
 
 
-function rule_αα!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, βsort)
+function rule_αα!(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, β, δ, s, βsort)
 
     αk, αl   = α[k], α[l]
     n, C, ϑ1 = data.n, model.C, model.l1.ϑ
@@ -238,7 +238,7 @@ function rule_αα!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
 end
 
 
-function rule_αβ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, βsort)
+function rule_αβ!(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, β, δ, s, βsort)
 
     αk, βl = α[k], β[l - data.nα]
     n, τ, C, ϑ1, ϑ2 = data.n, model.τ, model.C, model.l1.ϑ, model.l2.ϑ
@@ -265,7 +265,7 @@ function rule_αβ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, 
 end
 
 
-function rule_ββ!(model::PatMat{<:Hinge}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, βsort)
+function rule_ββ!(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, β, δ, s, βsort)
 
     βk, βl   = β[k - data.nα], β[l - data.nα]
     n, τ, ϑ2 = data.n, model.τ, model.l2.ϑ
@@ -301,12 +301,12 @@ end
 
 
 # Truncated quadratic loss
-function loss(model::PatMat{<:Quadratic}, data::Dual, a::Real, b::Real, δ::Real, Δ::Real, β2sum)
+function loss(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, a::Real, b::Real, δ::Real, Δ::Real, β2sum)
     a*Δ^2/2 + b*Δ - β2sum[1]/δ - δ*data.n*model.τ
 end
 
 
-function apply!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, α, β, δ, αβδ, s, β2sum)
+function apply!(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, best::BestUpdate, α, β, δ, αβδ, s, β2sum)
     if best.k > data.nα || best.l > data.nα
         if best.k <= data.nα && best.l > data.nα
             β2sum .+= best.Δ*(best.Δ + 2*β[best.l - data.nα])/(4*model.l2.ϑ^2)
@@ -321,7 +321,7 @@ function apply!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, α, β
 end
 
 
-function rule_αα!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, β2sum)
+function rule_αα!(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, β, δ, s, β2sum)
 
     αk, αl   = α[k], α[l]
     n, C, ϑ1 = data.n, model.C, model.l1.ϑ
@@ -336,7 +336,7 @@ function rule_αα!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k,
 end
 
 
-function rule_αβ!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, β2sum)
+function rule_αβ!(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, β, δ, s, β2sum)
 
     αk, βl = α[k], β[l - data.nα]
     n, τ, C, ϑ1, ϑ2 = data.n, model.τ, model.C, model.l1.ϑ, model.l2.ϑ
@@ -355,7 +355,7 @@ function rule_αβ!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k,
 end
 
 
-function rule_ββ!(model::PatMat{<:Quadratic}, data::Dual, best::BestUpdate, k, l, α, β, δ, s, β2sum)
+function rule_ββ!(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, β, δ, s, β2sum)
 
     βk, βl = β[k - data.nα], β[l - data.nα]
     n, τ, C, ϑ1, ϑ2 = data.n, model.τ, model.C, model.l1.ϑ, model.l2.ϑ

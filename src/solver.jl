@@ -1,7 +1,21 @@
 # General solver
-function solve(solver::General, model::AbstractModel, data::AbstractData)
-    return optimize(solver, model, data)
+function solve(solver::General, model::AbstractModel, data::Primal)
+    w, t = optimize(solver, model, data)
+    return (w = w, t = t)
 end
+
+
+function solve(solver::General, model::PatMat, data::Dual{<:DTrain})
+    α, β, δ = optimize(solver, model, data)
+    return (α = Vector(α), β = Vector(β), δ = δ, t = exact_threshold(model, data, α, β))
+end
+
+
+function solve(solver::General, model::AbstractTopPushK, data::Dual{<:DTrain})
+    α, β = optimize(solver, model, data)
+    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β))
+end
+
 
 # -------------------------------------------------------------------------------
 # Primal problem - gradient solver
@@ -14,7 +28,7 @@ function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float6
     # optimization
     for iter in 1:solver.maxiter
         # update score
-        scores!(data, w, s)
+        s .= data.X * w
 
         # progress
         progress(solver, model, data, iter, w, threshold(model, data, s), s)
@@ -23,9 +37,7 @@ function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float6
         gradient!(model, data, w, s, Δ)
         minimize!(solver, w, Δ)
     end
-
-    scores!(data, w, s)
-    return w, threshold(model, data, s)
+    return (w = w, t = threshold(model, data, data.X * w))
 end
 
 
@@ -33,7 +45,7 @@ end
 # Dual problem - gradient solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Gradient, model::PatMat, data::Dual, α0 = Float64[], β0 = Float64[])
+function solve(solver::Gradient, model::PatMat, data::Dual{<:DTrain}, α0 = Float64[], β0 = Float64[])
 
     α, β, δ, αβδ, s = initialization(model, data, α0, β0)
     Δ               = zero(αβδ)
@@ -42,7 +54,7 @@ function solve(solver::Gradient, model::PatMat, data::Dual, α0 = Float64[], β0
     # optimization
     for iter in 1:solver.maxiter
         # update score
-        scores!(data, α, β, s)
+        s .= data.K * vcat(α, β)
 
         # progress
         progress(solver, model, data, iter,  α, β, δ[1], s)
@@ -52,12 +64,12 @@ function solve(solver::Gradient, model::PatMat, data::Dual, α0 = Float64[], β0
         maximize!(solver, αβδ, Δ)
         projection!(model, data, α, β, δ)
     end
-    return Vector(α), Vector(β), δ[1]
+    return (α = Vector(α), β = Vector(β), δ = δ[1], t = exact_threshold(model, data, α, β))
 end
 
 
 # TopPushK
-function solve(solver::Gradient, model::AbstractTopPushK, data::Dual, α0 = Float64[], β0 = Float64[])
+function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain}, α0 = Float64[], β0 = Float64[])
 
     α, β, αβ, s = initialization(model, data, α0, β0)
     Δ           = zero(αβ)
@@ -66,7 +78,7 @@ function solve(solver::Gradient, model::AbstractTopPushK, data::Dual, α0 = Floa
     # optimization
     for iter in 1:solver.maxiter
         # update score
-        scores!(data, α, β, s)
+        s .= data.K * vcat(α, β)
 
         # progress
         progress(solver, model, data, iter,  α, β, s)
@@ -76,7 +88,7 @@ function solve(solver::Gradient, model::AbstractTopPushK, data::Dual, α0 = Floa
         maximize!(solver, αβ, Δ)
         projection!(model, data, α, β)
     end
-    return Vector(α), Vector(β)
+    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β))
 end
 
 
@@ -84,7 +96,11 @@ end
 # Dual problem - coordinate descent solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Coordinate, model::PatMat{<:S}, data::Dual, α0 = Float64[], β0 = Float64[]) where {S<:AbstractSurrogate}
+function solve(solver::Coordinate,
+               model::PatMat{<:S},
+               data::Dual{<:DTrain},
+               α0 = Float64[],
+               β0 = Float64[]) where {S<:AbstractSurrogate}
 
     α, β, δ, αβδ, s = initialization(model, data, α0, β0)
     S <: Hinge     && ( βtmp = sort(β, rev = true) )
@@ -102,12 +118,16 @@ function solve(solver::Coordinate, model::PatMat{<:S}, data::Dual, α0 = Float64
         # progress
         progress(solver, model, data, iter, α, β, δ[1], s)
     end
-    return Vector(α), Vector(β), δ[1]
+    return (α = Vector(α), β = Vector(β), δ = δ[1], t = exact_threshold(model, data, α, β))
 end
 
 
 # TopPushK
-function solve(solver::Coordinate, model::AbstractTopPushK, data::Dual, α0 = Float64[], β0 = Float64[])
+function solve(solver::Coordinate,
+               model::AbstractTopPushK,
+               data::Dual{<:DTrain},
+               α0 = Float64[],
+               β0 = Float64[])
 
     α, β, αβ, s = initialization(model, data, α0, β0)
     αsum        = [sum(α)]
@@ -124,6 +144,6 @@ function solve(solver::Coordinate, model::AbstractTopPushK, data::Dual, α0 = Fl
         # progress
         progress(solver, model, data, iter,  α, β, s)
     end
-    return Vector(α), Vector(β)
+    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β))
 end
 

@@ -32,18 +32,18 @@ function test_primal_problems()
         l     = Hinge(ϑ1);
         model = TopPush(l, C);
 
-        test_primal(model, data, 100000, ADAM(0.0001))
+        test_primal(model, data, 100000, ADAM(0.001))
     end
 end
 
 
 function test_primal(model::AbstractModel, data::Primal, maxiter::Integer, optimizer::Any; atol::Real = 1e-4)
 
-    w1, t1 = solve(Gradient(maxiter = maxiter, optimizer = optimizer, verbose = false), model, data)
-    L1     = ClassificationOnTop.objective(model, data, w1, t1) 
+    sol1 = solve(Gradient(maxiter = maxiter, optimizer = optimizer, verbose = false), model, data)
+    L1   = ClassificationOnTop.objective(model, data, sol1) 
 
-    w2, t2 = solve(General(), model, data)
-    L2     = ClassificationOnTop.objective(model, data, w2, t2)
+    sol2 = solve(General(), model, data)
+    L2   = ClassificationOnTop.objective(model, data, sol2)
     
     @test L1 ≈ L2 atol = atol
 end
