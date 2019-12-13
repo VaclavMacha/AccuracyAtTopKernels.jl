@@ -92,7 +92,7 @@ end
 
 
 # Dual problems
-function predict(model::PatMat, data::Dual, α::AbstractVector, β::AbstractVector, t::Real)
+function predict(model::AbstractModel, data::Dual, α::AbstractVector, β::AbstractVector, t::Real)
     scores(model, data, α, β) .>= t
 end
 
