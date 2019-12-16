@@ -12,9 +12,9 @@ function test_kernels()
     model2 = TopPushK(Hinge(1), 5, 1.1)
     model3 = TopPush(Hinge(1), 1.1)
 
-    kernels = [KernelFunctions.LinearKernel(),
-               KernelFunctions.SqExponentialKernel(),
-               KernelFunctions.RationalQuadraticKernel()]
+    kernels = [LinearKernel(),
+               SquaredExponentialKernel(),
+               RationalQuadraticKernel()]
 
     @testset "PatMat with $(typeof(kernel).name) kernel" for kernel in kernels 
         test_kernelmatrix(model1, kernel, Xtrain, ytrain, Xtest, ytest)
@@ -33,7 +33,7 @@ end
 function getmatrix(model::PatMat, Xtrain, ytrain, kernel, ε)
     pos = findall(ytrain)
     nα  = length(pos)
-    K   = KernelFunctions.kernelmatrix(kernel, vcat(Xtrain[pos,:], Xtrain); obsdim = 1)
+    K   = MLKernels.kernelmatrix(Val(:row), kernel, vcat(Xtrain[pos,:], Xtrain))
     K[1:nα, nα+1:end] .*= -1
     K[nα+1:end, 1:nα] .*= -1
     K[:, :] += I*ε
@@ -49,7 +49,7 @@ end
 function getmatrix(model::PatMat, Xtrain, ytrain, Xtest, kernel, ε)
     pos = findall(ytrain)
     nα  = length(pos)
-    K   = KernelFunctions.kernelmatrix(kernel, vcat(Xtrain[pos,:], Xtrain), Xtest; obsdim = 1)
+    K   = MLKernels.kernelmatrix(Val(:row), kernel, vcat(Xtrain[pos,:], Xtrain), Xtest)
     K[nα+1:end, :] .*= -1
     return K
 end
@@ -58,7 +58,7 @@ function getmatrix(model::AbstractTopPushK, Xtrain, ytrain, kernel, ε)
     pos = findall(ytrain)
     neg = findall(.~ytrain)
     nα  = length(pos)
-    K   = KernelFunctions.kernelmatrix(kernel, vcat(Xtrain[pos,:], Xtrain[neg,:]); obsdim = 1)
+    K   = MLKernels.kernelmatrix(Val(:row), kernel, vcat(Xtrain[pos,:], Xtrain[neg,:]))
     K[1:nα, nα+1:end] .*= -1
     K[nα+1:end, 1:nα] .*= -1
     K[:, :] += I*ε
@@ -75,7 +75,7 @@ function getmatrix(model::AbstractTopPushK, Xtrain, ytrain, Xtest, kernel, ε)
     pos = findall(ytrain)
     neg = findall(.~ytrain)
     nα  = length(pos)
-    K   = KernelFunctions.kernelmatrix(kernel, vcat(Xtrain[pos,:], Xtrain[neg,:]), Xtest; obsdim = 1)
+    K   = MLKernels.kernelmatrix(kernel, vcat(Xtrain[pos,:], Xtrain[neg,:]), Xtest)
     K[nα+1:end, :] .*= -1
     return K
 end

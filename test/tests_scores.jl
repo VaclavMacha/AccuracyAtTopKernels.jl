@@ -1,4 +1,4 @@
-function test_kernels()
+function test_scores()
 
     N   = rand(50:200)
     M   = rand(50:200)
@@ -12,9 +12,9 @@ function test_kernels()
     model2 = TopPushK(Hinge(1), 5, 1.1)
     model3 = TopPush(Hinge(1), 1.1)
 
-    kernels = [KernelFunctions.LinearKernel(),
-               KernelFunctions.SqExponentialKernel(),
-               KernelFunctions.RationalQuadraticKernel()]
+    kernels = [LinearKernel(),
+               SquaredExponentialKernel(),
+               RationalQuadraticKernel()]
 
     @testset "PatMat with $(typeof(kernel).name) kernel" for kernel in kernels 
         test_scores(model1, kernel, Xtrain, ytrain, Xtest, ytest)

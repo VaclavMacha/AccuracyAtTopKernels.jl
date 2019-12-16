@@ -1,25 +1,106 @@
 module ClassificationOnTop
 
+
+# -------------------------------------------------------------------------------
+# Used packages
+# -------------------------------------------------------------------------------
 using Statistics, LinearAlgebra
 import Convex, ECOS, Roots, Mmap, ProgressMeter
-
-export solve, scores, predict,
-       AbstractSolver, General, Gradient, Coordinate,
-       AbstractSurrogate, Hinge, Quadratic, Exponential,
-       AbstractModel, AbstractTopPushK, PatMat, TopPushK, TopPush,
-       AbstractData, Primal, Dual, DTrain, DValidation, DTest 
 
 import Flux.Optimise
 import Flux.Optimise: Descent, ADAM, Momentum, Nesterov, RMSProp,
                       ADAGrad, AdaMax, ADADelta, AMSGrad, NADAM, ADAMW, RADAM
 
-export Descent, ADAM, Momentum, Nesterov, RMSProp,
-       ADAGrad, AdaMax, ADADelta, AMSGrad, NADAM, ADAMW, RADAM
+import MLKernels
+import MLKernels: Orientation,
+                  Kernel,
+                  ExponentialKernel,
+                  LaplacianKernel,
+                  SquaredExponentialKernel,
+                  GaussianKernel,
+                  RadialBasisKernel,
+                  GammaExponentialKernel,
+                  RationalQuadraticKernel,
+                  MaternKernel,
+                  LinearKernel,
+                  PolynomialKernel,
+                  ExponentiatedKernel,
+                  PeriodicKernel,
+                  PowerKernel,
+                  LogKernel,
+                  SigmoidKernel
 
-import KernelFunctions 
-import KernelFunctions: Kernel, LinearKernel
 
-# types 
+# -------------------------------------------------------------------------------
+# Export 
+# -------------------------------------------------------------------------------
+export
+    solve,
+    scores,
+    predict,
+    
+    # Solvers
+    AbstractSolver,
+        General,
+        Gradient,
+        Coordinate,
+    
+    # Surrogates
+    AbstractSurrogate,
+        Hinge,
+        Quadratic,
+        Exponential,
+    
+    # Models
+    AbstractModel,
+        PatMat,
+        AbstractTopPushK,
+            TopPushK,
+            TopPush,
+
+    # Data        
+    AbstractData,
+        Primal,
+        Dual,
+            DTrain,
+            DValidation,
+            DTest, 
+
+    # Gradient descent optimizers (reexport Flux.Optimise)
+    Descent,
+    ADAM,
+    Momentum,
+    Nesterov,
+    RMSProp,
+    ADAGrad,
+    AdaMax,
+    ADADelta,
+    AMSGrad,
+    NADAM,
+    ADAMW,
+    RADAM,
+
+    # Kernels (reexport MLKernels)
+    ExponentialKernel,
+    LaplacianKernel,
+    SquaredExponentialKernel,
+    GaussianKernel,
+    RadialBasisKernel,
+    GammaExponentialKernel,
+    RationalQuadraticKernel,
+    MaternKernel,
+    LinearKernel,
+    PolynomialKernel,
+    ExponentiatedKernel,
+    PeriodicKernel,
+    PowerKernel,
+    LogKernel,
+    SigmoidKernel
+
+
+# -------------------------------------------------------------------------------
+# types  
+# -------------------------------------------------------------------------------
 abstract type AbstractSurrogate end
 abstract type AbstractData end
 abstract type AbstractModel end

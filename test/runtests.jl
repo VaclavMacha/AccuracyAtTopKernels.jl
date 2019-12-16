@@ -1,7 +1,7 @@
 using ClassificationOnTop
 
 using Test, Distributions, LinearAlgebra, Random
-import KernelFunctions
+import ClassificationOnTop.MLKernels
 
 include("./tests_surrogates.jl")
 include("./tests_datasets.jl")
@@ -40,6 +40,6 @@ include("./tests_scores.jl")
     end
 
     @testset "tests scores" begin
-        test_kernels()
+        test_scores()
     end
 end;
