@@ -60,22 +60,22 @@ function save_kernelmatrix(model::AbstractModel,
     X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(model, Xtrain, ytrain)
 
     n, npos, nneg = length(inv_perm), length(ind_pos), length(ind_neg)
-    N, M          = nα + nβ, nα + nβ
+    N             = nα + nβ
 
     # auxiliary 
     io = open(file, "w+");
     write(io, 0)
-    write(io, [nα, nβ, n, npos, nneg, M, N])
+    write(io, [nα, nβ, n, npos, nneg, N, N])
     write(io, ind_pos)
     write(io, ind_neg)
     write(io, inv_perm)
 
     # kernel matrix
-    K = Mmap.mmap(io, Matrix{T}, (N, M))
+    K = Mmap.mmap(io, Matrix{T}, (N, N))
     fill_kernelmatrix!(K, kernel, X, X)
     K[1:nα, nα+1:end] .*= -1
     K[(nα+1):end, 1:nα] .*= -1
-    K[:, :] += I*ε
+    [K[i, i] += ε for i in 1:N]
     Mmap.sync!(K)
     close(io)
 
