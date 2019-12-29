@@ -12,9 +12,26 @@ struct TopPushK{S<:AbstractSurrogate, I<:Integer, T<:Real} <: AbstractTopPushK{S
 end
 
 
+function convert(::Type{NamedTuple}, model::TopPushK{S}) where {S<:AbstractSurrogate}
+    (model     = "TopPushK",
+     surrogate = string(S.name),
+     theta     = model.l.ϑ,
+     K         = model.K,
+     C         = model.C)
+end
+
+
 struct TopPush{S<:AbstractSurrogate, T<:Real} <: AbstractTopPushK{S}
     l::S
     C::T
+end
+
+
+function convert(::Type{NamedTuple}, model::TopPush{S}) where {S<:AbstractSurrogate}
+    (model     = "TopPush",
+     surrogate = string(S.name),
+     theta     = model.l.ϑ,
+     C         = model.C)
 end
 
 
@@ -97,6 +114,7 @@ function gradient!(model::TopPushK, data::Primal, w, s, Δ)
     ∇t = vec(mean(data.X[data.ind_neg[ind_t], :], dims = 1))
 
     Δ .= w .+ model.C .* (sum(∇l)*∇t .- data.X[data.ind_pos,:]'*∇l)
+    return t
 end
 
 
@@ -107,6 +125,7 @@ function gradient!(model::TopPush, data::Primal, w, s, Δ)
     ∇t = vec(data.X[data.ind_neg[ind_t], :])
 
     Δ .= w .+ model.C .* (sum(∇l)*∇t .- data.X[data.ind_pos,:]'*∇l)
+    return t
 end
 
 

@@ -31,6 +31,41 @@ function (progress::ProgressBar)(solver::AbstractSolver,
     end
 end
 
+
+# -------------------------------------------------------------------------------
+# State 
+# -------------------------------------------------------------------------------
+struct State{T1, T2, D}
+    solver::T1
+    model::T2
+    dict::D
+end 
+
+
+function State(solver::AbstractSolver,
+               model::AbstractModel,
+               key::Symbol = :init;
+               kwargs...)
+
+    dict = Dict(key => values(kwargs))
+
+    return State(convert(NamedTuple, solver), convert(NamedTuple, model), dict)
+end
+
+
+function (state::State)(iter::Integer;
+                        kwargs...)
+    
+    if in(iter, state.solver.iters)
+        state.dict[Symbol(:iter_, iter)] = values(kwargs)
+    end
+end
+
+function (state::State)(; kwargs...)
+    state.dict[:optimal] = values(kwargs)
+end
+
+
 # -------------------------------------------------------------------------------
 # Gradient descent utilities
 # -------------------------------------------------------------------------------

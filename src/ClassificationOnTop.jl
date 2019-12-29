@@ -4,12 +4,23 @@ module ClassificationOnTop
 # -------------------------------------------------------------------------------
 # Used packages
 # -------------------------------------------------------------------------------
-using Statistics, LinearAlgebra
+using Statistics, LinearAlgebra, Random
 import Convex, ECOS, Roots, Mmap, ProgressMeter
+import Base: convert
 
 import Flux.Optimise
-import Flux.Optimise: Descent, ADAM, Momentum, Nesterov, RMSProp,
-                      ADAGrad, AdaMax, ADADelta, AMSGrad, NADAM, ADAMW, RADAM
+import Flux.Optimise: Descent,
+                      ADAM,
+                      Momentum,
+                      Nesterov,
+                      RMSProp,
+                      ADAGrad,
+                      AdaMax,
+                      ADADelta,
+                      AMSGrad,
+                      NADAM,
+                      ADAMW,
+                      RADAM
 
 import MLKernels
 import MLKernels: Orientation,
@@ -108,35 +119,76 @@ abstract type AbstractTopPushK{AbstractSurrogate} <: AbstractModel end
 abstract type AbstractSolver end
 
 
-struct General{S} <: AbstractSolver
+struct General{I<:Integer,S} <: AbstractSolver
+    seed::I
     solver::S
 end
 
 
-function General(; solver::Any = ECOS.ECOSSolver(verbose = false))
-    return General(solver)
+function General(; solver::Any   = ECOS.ECOSSolver(verbose = false),
+                   seed::Integer = rand(1:10000))
+    return General(seed, solver)
 end
 
 
-struct Gradient{I<:Integer, B<:Bool, O} <: AbstractSolver
+function convert(::Type{NamedTuple}, solver::General)
+    (solver    = "General",
+     optimizer = string(typeof(solver.solver).name),
+     seed      = solver.seed)
+end
+
+
+
+struct Gradient{I<:Integer, B<:Bool, O, V} <: AbstractSolver
+    seed::I
     maxiter::I
     verbose::B
     optimizer::O
+    iters::V
 end
 
 
-function Gradient(; maxiter::Integer = 1000, verbose::Bool = true, optimizer::Any = Optimise.ADAM())
-    return Gradient(maxiter, verbose, optimizer)
+function Gradient(; maxiter::Integer      = 1000,
+                    verbose::Bool         = true,
+                    optimizer::Any        = Optimise.ADAM(),
+                    iters::AbstractVector = [],
+                    seed::Integer         = rand(1:10000))
+
+    return Gradient(seed, maxiter, verbose, optimizer, iters)
 end
 
-struct Coordinate{I<:Integer, B<:Bool} <: AbstractSolver
+
+function convert(::Type{NamedTuple}, solver::Gradient)
+    (solver    = "Gradient",
+     optimizer = string(typeof(solver.optimizer).name),
+     maxiter   = solver.maxiter,
+     iters     = solver.iters,
+     seed      = solver.seed)
+end
+
+
+struct Coordinate{I<:Integer, B<:Bool, V} <: AbstractSolver
+    seed::I
     maxiter::I
     verbose::B
+    iters::V
 end
 
 
-function Coordinate(; maxiter::Integer = 1000, verbose::Bool = true)
-    return Coordinate(maxiter, verbose)
+function Coordinate(; maxiter::Integer      = 1000,
+                      verbose::Bool         = true,
+                      iters::AbstractVector = [],
+                      seed::Integer         = rand(1:10000))
+
+    return Coordinate(seed, maxiter, verbose, iters)
+end
+
+
+function convert(::Type{NamedTuple}, solver::Coordinate)
+    (solver    = "Coordinate",
+     maxiter   = solver.maxiter,
+     iters     = solver.iters,
+     seed      = solver.seed)
 end
 
 

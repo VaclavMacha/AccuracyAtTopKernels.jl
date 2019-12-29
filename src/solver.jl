@@ -1,19 +1,38 @@
 # General solver
 function solve(solver::General, model::AbstractModel, data::Primal)
-    w, t = optimize(solver, model, data)
-    return (w = w, t = t)
+    Random.seed!(solver.seed)
+
+    w, t  = optimize(solver, model, data)
+    w     = Vector(w)
+    state = State(solver, model, :optimal; w = w, t = t)
+
+    return (w = w, t = t, state = state)
 end
 
 
 function solve(solver::General, model::PatMat, data::Dual{<:DTrain})
+    Random.seed!(solver.seed)
+
     α, β, δ = optimize(solver, model, data)
-    return (α = Vector(α), β = Vector(β), δ = δ, t = exact_threshold(model, data, α, β))
+    α       = Vector(α)
+    β       = Vector(β)
+    t       = exact_threshold(model, data, α, β)
+    state   = State(solver, model, :optimal; α = α, β = β, δ = δ)
+
+    return (α = α, β = β, δ = δ, t = t, state = state)
 end
 
 
 function solve(solver::General, model::AbstractTopPushK, data::Dual{<:DTrain})
-    α, β = optimize(solver, model, data)
-    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β))
+    Random.seed!(solver.seed)
+
+    α, β  = optimize(solver, model, data)
+    α     = Vector(α)
+    β     = Vector(β)
+    t     = exact_threshold(model, data, α, β)
+    state = State(solver, model, :optimal; α = α, β = β)
+
+    return (α = α, β = β, t = t, state = state)
 end
 
 
@@ -21,23 +40,31 @@ end
 # Primal problem - gradient solver
 # -------------------------------------------------------------------------------
 function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float64[])
+    Random.seed!(solver.seed)
 
     w, s, Δ  = initialization(model, data, w0)
-    progress = ProgressBar(solver, model, data, w, threshold(model, data, s), s)
+    t        = threshold(model, data, s)
+
+    state    = State(solver, model; w = Vector(w))
+    progress = ProgressBar(solver, model, data, w, t, s)
 
     # optimization
     for iter in 1:solver.maxiter
-        # update score
+        # update score and compute gradient
         s .= data.X * w
+        t  = gradient!(model, data, w, s, Δ)
 
-        # progress
-        progress(solver, model, data, iter, w, threshold(model, data, s), s)
+        # progress and state
+        progress(solver, model, data, iter, w, t, s)
 
-        # compute gradient and perform update
-        gradient!(model, data, w, s, Δ)
+        # update solution
         minimize!(solver, w, Δ)
+        state(iter; w = Vector(w))
     end
-    return (w = w, t = threshold(model, data, data.X * w))
+
+    state(; w = Vector(w))
+
+    return (w = Vector(w), t = threshold(model, data, data.X * w), state = state)
 end
 
 
@@ -46,49 +73,67 @@ end
 # -------------------------------------------------------------------------------
 # PatMat
 function solve(solver::Gradient, model::PatMat, data::Dual{<:DTrain}, α0 = Float64[], β0 = Float64[])
+    Random.seed!(solver.seed)
 
     α, β, δ, αβδ, s = initialization(model, data, α0, β0)
     Δ               = zero(αβδ)
-    progress        = ProgressBar(solver, model, data, α, β, δ[1], s)
+
+    state    = State(solver, model; α = Vector(α), β = Vector(β), δ = δ[1])
+    progress = ProgressBar(solver, model, data, α, β, δ[1], s)
 
     # optimization
     for iter in 1:solver.maxiter
         # update score
         s .= data.K * vcat(α, β)
 
-        # progress
+        # progress and state
         progress(solver, model, data, iter,  α, β, δ[1], s)
 
-        # compute gradient and perform update
+        # compute gradient and update solution
         gradient!(model, data, α, β, δ, s, Δ)
         maximize!(solver, αβδ, Δ)
         projection!(model, data, α, β, δ)
+        state(iter; α = Vector(α), β = Vector(β), δ = δ[1])
     end
-    return (α = Vector(α), β = Vector(β), δ = δ[1], t = exact_threshold(model, data, α, β))
+
+    α = Vector(α)
+    β = Vector(β)
+    state(α = α, β = β, δ = δ[1])
+
+    return (α = α, β = β, δ = δ[1], t = exact_threshold(model, data, α, β), state = state)
 end
 
 
 # TopPushK
 function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain}, α0 = Float64[], β0 = Float64[])
+    Random.seed!(solver.seed)
 
     α, β, αβ, s = initialization(model, data, α0, β0)
     Δ           = zero(αβ)
-    progress    = ProgressBar(solver, model, data, α, β, s)
+
+    state    = State(solver, model; α = Vector(α), β = Vector(β))
+    progress = ProgressBar(solver, model, data, α, β, s)
 
     # optimization
     for iter in 1:solver.maxiter
         # update score
         s .= data.K * vcat(α, β)
 
-        # progress
+        # progress and state
         progress(solver, model, data, iter,  α, β, s)
 
-        # compute gradient and perform update
+        # ccompute gradient and update solution
         gradient!(model, data, α, β, s, Δ)
         maximize!(solver, αβ, Δ)
         projection!(model, data, α, β)
+        state(iter; α = α, β = β)
     end
-    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β))
+
+    α = Vector(α)
+    β = Vector(β)
+    state(α = α, β = β)
+
+    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β), state = state)
 end
 
 
@@ -102,11 +147,14 @@ function solve(solver::Coordinate,
                α0 = Float64[],
                β0 = Float64[]) where {S<:AbstractSurrogate}
 
+    Random.seed!(solver.seed)
+
     α, β, δ, αβδ, s = initialization(model, data, α0, β0)
     S <: Hinge     && ( βtmp = sort(β, rev = true) )
     S <: Quadratic && ( βtmp = [sum(abs2, β)/(4*model.l2.ϑ^2)] )
  
-    progress        = ProgressBar(solver, model, data, α, β, δ[1], s)
+    state    = State(solver, model; α = Vector(α), β = Vector(β), δ = δ[1])
+    progress = ProgressBar(solver, model, data, α, β, δ[1], s)
 
     # optimization
     for iter in 1:solver.maxiter
@@ -115,10 +163,16 @@ function solve(solver::Coordinate,
         best = select_rule(model, data, k, α, β, δ, s, βtmp)
         iszero(best.Δ) || apply!(model, data, best, α, β, δ, αβδ, s, βtmp)
 
-        # progress
+        # progress and state
         progress(solver, model, data, iter, α, β, δ[1], s)
+        state(iter; α = Vector(α), β = Vector(β), δ = δ[1])
     end
-    return (α = Vector(α), β = Vector(β), δ = δ[1], t = exact_threshold(model, data, α, β))
+
+    α = Vector(α)
+    β = Vector(β)
+    state(α = α, β = β, δ = δ[1])
+
+    return (α = α, β = β, δ = δ[1], t = exact_threshold(model, data, α, β), state = state)
 end
 
 
@@ -129,10 +183,14 @@ function solve(solver::Coordinate,
                α0 = Float64[],
                β0 = Float64[])
 
+    Random.seed!(solver.seed)
+
     α, β, αβ, s = initialization(model, data, α0, β0)
     αsum        = [sum(α)]
     βsort       = sort(β, rev = true)
-    progress    = ProgressBar(solver, model, data, α, β, s)
+
+    state    = State(solver, model; α = Vector(α), β = Vector(β))
+    progress = ProgressBar(solver, model, data, α, β, s)
 
     # optimization
     for iter in 1:solver.maxiter
@@ -141,9 +199,15 @@ function solve(solver::Coordinate,
         best = select_rule(model, data, k, α, β, s, αsum, βsort)
         iszero(best.Δ) || apply!(model, data, best, α, β, αβ, s, αsum, βsort)
 
-        # progress
+        # progress and state
         progress(solver, model, data, iter,  α, β, s)
+        state(iter; α = Vector(α), β = Vector(β))
     end
-    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β))
+
+    α = Vector(α)
+    β = Vector(β)
+    state(; α = α, β = β)
+
+    return (α = α, β = β, t = exact_threshold(model, data, α, β), state = state)
 end
 

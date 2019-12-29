@@ -13,6 +13,16 @@ struct PatMat{S<:AbstractSurrogate, T1<:Real, T2<:Real} <: AbstractModel
 end
 
 
+function convert(::Type{NamedTuple}, model::PatMat{S}) where {S<:AbstractSurrogate}
+    (model     = "PatMat",
+     surrogate = string(S.name),
+     theta1    = model.l1.ϑ,
+     theta2    = model.l2.ϑ,
+     tau       = model.τ,
+     C         = model.C)
+end
+
+
 # -------------------------------------------------------------------------------
 # Primal problem - General solver
 # -------------------------------------------------------------------------------
@@ -67,6 +77,7 @@ function gradient!(model::PatMat, data::Primal, w, s, Δ)
     ∇t  = data.X'*∇l2/sum(∇l2)
 
     Δ .= w .+ model.C .* (sum(∇l1)*∇t .- data.X[data.ind_pos,:]'*∇l1)
+    return t
 end
 
 
