@@ -5,8 +5,10 @@ module ClassificationOnTop
 # Used packages
 # -------------------------------------------------------------------------------
 using Statistics, LinearAlgebra, Random
-import Convex, ECOS, Roots, Mmap, ProgressMeter
+import Convex, Roots, Mmap, ProgressMeter
+import ECOS: ECOSSolver
 import Base: convert, show
+
 
 import Flux.Optimise
 import Flux.Optimise: Descent,
@@ -127,9 +129,14 @@ struct General{I<:Integer,S} <: AbstractSolver
 end
 
 
-function General(; solver::Any   = ECOS.ECOSSolver(verbose = false),
+function General(; solver::Any   = ECOSSolver(verbose = false),
                    seed::Integer = rand(1:10000))
     return General(seed, solver)
+end
+
+
+function show(io::IO, solver::General)
+    print(io, "General(", typeof(solver.solver), ")")
 end
 
 
@@ -160,6 +167,16 @@ function Gradient(; maxiter::Integer      = 1000,
 end
 
 
+function show(io::IO, solver::Gradient)
+    opt  = solver.optimizer
+    T    = typeof(opt)
+    vals = [getfield(opt, field) for field in fieldnames(T) if !(fieldtype(T, field) <: IdDict)]
+    name = string(T.name, "(", join(vals, ","), ")")
+
+    print(io, "Gradient(", join([name, solver.maxiter], ","), ")")
+end
+
+
 function convert(::Type{NamedTuple}, solver::Gradient)
     (solver    = "Gradient",
      optimizer = string(typeof(solver.optimizer).name),
@@ -183,6 +200,11 @@ function Coordinate(; maxiter::Integer      = 1000,
                       seed::Integer         = rand(1:10000))
 
     return Coordinate(seed, maxiter, verbose, iters)
+end
+
+
+function show(io::IO, solver::Coordinate)
+    print(io, "Coordinate(", solver.maxiter, ")")
 end
 
 
