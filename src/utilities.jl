@@ -43,11 +43,10 @@ end
 
 
 function State(solver::AbstractSolver,
-               model::AbstractModel,
-               key::Symbol = :init;
+               model::AbstractModel;
                kwargs...)
 
-    dict = Dict(key => values(kwargs))
+    dict = Dict(:iter_0 => values(kwargs))
 
     return State(convert(NamedTuple, solver), convert(NamedTuple, model), dict)
 end
@@ -62,7 +61,7 @@ function (state::State)(iter::Integer;
 end
 
 function (state::State)(; kwargs...)
-    state.dict[:optimal] = values(kwargs)
+    state.dict[Symbol(:iter_, state.solver.maxiter)] = values(kwargs)
 end
 
 
