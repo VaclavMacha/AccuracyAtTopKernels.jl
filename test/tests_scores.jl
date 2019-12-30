@@ -30,16 +30,16 @@ function test_scores()
 end
 
 
-function test_scores(model, kernel, Xtrain, ytrain, Xtest, ytest; ε::Real = 1e-5, atol::Real = 1e-4)
+function test_scores(model, kernel, Xtrain, ytrain, Xtest, ytest; atol::Real = 1e-4)
     
-    ClassificationOnTop.save_kernelmatrix(model, "train.bin", Xtrain, ytrain; kernel = kernel, ε = ε, T = Float64)
+    ClassificationOnTop.save_kernelmatrix(model, "train.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "valid.bin", Xtrain, ytrain, Xtest, ytest; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "test.bin", Xtrain, ytrain, Xtest; kernel = kernel, T = Float64)
 
-    data = Dual(model, Xtrain, ytrain; kernel = kernel, ε = ε)
+    data = Dual(model, Xtrain, ytrain; kernel = kernel)
     α, β = rand(data.nα), rand(data.nβ)
 
-    s1 = scores(model, Xtrain, ytrain, α, β; kernel = kernel, ε = ε)
+    s1 = scores(model, Xtrain, ytrain, α, β; kernel = kernel)
     s2 = scores(model, Xtrain, ytrain, Xtrain, α, β; kernel = kernel)
     s3 = scores(model, Xtrain, ytrain, Xtest, ytest, α, β; kernel = kernel)
     s4 = scores(model, Xtrain, ytrain, Xtest, α, β; kernel = kernel)
