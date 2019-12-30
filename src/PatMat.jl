@@ -90,13 +90,14 @@ end
 # Dual problem - General solver
 # -------------------------------------------------------------------------------
 # Hinge loss
-function optimize(solver::General, model::PatMat{<:Hinge}, data::Dual{<:DTrain})
+function optimize(solver::General, model::PatMat{<:Hinge}, data::Dual{<:DTrain}; ε::Real = 1e-6)
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
     δ = Convex.Variable()
+    K = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), data.K)/2 + Convex.sum(α)/model.l1.ϑ + 
+    objective   = - Convex.quadform(vcat(α, β), K)/2 + Convex.sum(α)/model.l1.ϑ + 
                     Convex.sum(β)/model.l2.ϑ - δ*data.n*model.τ
     constraints = [Convex.sum(α) == Convex.sum(β),
                    α <= model.l1.ϑ*model.C,
@@ -112,13 +113,14 @@ end
 
 
 # Truncated quadratic loss
-function optimize(solver::General, model::PatMat{<:Quadratic}, data::Dual{<:DTrain})
+function optimize(solver::General, model::PatMat{<:Quadratic}, data::Dual{<:DTrain}; ε::Real = 1e-6)
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
     δ = Convex.Variable()
+    K = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), data.K)/2 +
+    objective   = - Convex.quadform(vcat(α, β), K)/2 +
                     Convex.sum(α)/model.l1.ϑ - Convex.sumsquares(α)/(4*model.C*model.l1.ϑ^2) +
                     Convex.sum(β)/model.l2.ϑ - Convex.quadoverlin(β, δ)/(4*model.l2.ϑ^2) -
                     δ*data.n*model.τ

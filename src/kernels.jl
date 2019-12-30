@@ -35,8 +35,7 @@ end
 function kernelmatrix(model::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::BitArray{1};
-                      kernel::Kernel = LinearKernel(1, 0),
-                      ε::Real = 1e-10)
+                      kernel::Kernel = LinearKernel(1, 0))
 
     X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(model, Xtrain, ytrain)
     n = length(ytrain)
@@ -44,7 +43,6 @@ function kernelmatrix(model::AbstractModel,
     K = MLKernels.kernelmatrix(Val(:row), kernel, X, true)
     K[1:nα, nα+1:end]   .*= -1
     K[(nα+1):end, 1:nα] .*= -1
-    K[:, :] += I*ε
     return K, n, nα, nβ, ind_pos, ind_neg, inv_perm
 end
 
@@ -54,7 +52,6 @@ function save_kernelmatrix(model::AbstractModel,
                            Xtrain::AbstractMatrix,
                            ytrain::BitArray{1};
                            kernel::Kernel = LinearKernel(1, 0),
-                           ε::Real        = 1e-10,
                            T::DataType    = Float32)
 
     X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(model, Xtrain, ytrain)
@@ -73,9 +70,8 @@ function save_kernelmatrix(model::AbstractModel,
     # kernel matrix
     K = Mmap.mmap(io, Matrix{T}, (N, N))
     fill_kernelmatrix!(K, kernel, X, X)
-    K[1:nα, nα+1:end] .*= -1
+    K[1:nα, nα+1:end]   .*= -1
     K[(nα+1):end, 1:nα] .*= -1
-    [K[i, i] += ε for i in 1:N]
     Mmap.sync!(K)
     close(io)
 
@@ -91,8 +87,7 @@ function kernelmatrix(model::AbstractModel,
                       ytrain::BitArray{1},
                       Xvalid::AbstractArray,
                       yvalid::BitArray{1};
-                      kernel::Kernel = LinearKernel(1, 0),
-                      ε::Real = 1e-10)
+                      kernel::Kernel = LinearKernel(1, 0))
 
     X, nα, nβ, = prepare(model, Xtrain, ytrain)
     n          = length(yvalid)

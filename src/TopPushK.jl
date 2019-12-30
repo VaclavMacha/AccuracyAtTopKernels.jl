@@ -143,12 +143,13 @@ end
 # Dual problem - General solver
 # -------------------------------------------------------------------------------
 # Hinge loss
-function optimize(solver::General, model::M, data::Dual{<:DTrain}) where {M<:AbstractTopPushK{<:Hinge}}
+function optimize(solver::General, model::M, data::Dual{<:DTrain}; ε::Real = 1e-6) where {M<:AbstractTopPushK{<:Hinge}}
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
+    K = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), data.K)/2 + Convex.sum(α)/model.l.ϑ
+    objective   = - Convex.quadform(vcat(α, β), K)/2 + Convex.sum(α)/model.l.ϑ
     constraints = [Convex.sum(α) == Convex.sum(β),
                    α <= model.l.ϑ*model.C,
                    α >= 0,
@@ -163,12 +164,13 @@ function optimize(solver::General, model::M, data::Dual{<:DTrain}) where {M<:Abs
 end
 
 # Truncated quadratic loss
-function optimize(solver::General, model::M, data::Dual{<:DTrain}) where {M<:AbstractTopPushK{<:Quadratic}}
+function optimize(solver::General, model::M, data::Dual{<:DTrain}; ε::Real = 1e-6) where {M<:AbstractTopPushK{<:Quadratic}}
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
+    K = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), data.K)/2 +
+    objective   = - Convex.quadform(vcat(α, β), K)/2 +
                     Convex.sum(α)/model.l.ϑ - Convex.sumsquares(α)/(4*model.C*model.l.ϑ^2)
     constraints = [Convex.sum(α) == Convex.sum(β),
                    α >= 0,
