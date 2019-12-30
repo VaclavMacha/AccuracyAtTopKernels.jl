@@ -13,6 +13,11 @@ struct PatMat{S<:AbstractSurrogate, T1<:Real, T2<:Real} <: AbstractModel
 end
 
 
+function show(io::IO, model::PatMat)
+    print(io, "PatMat(", join([model.l1, model.l1, model.τ, model.C], ","), ")")
+end
+
+
 function convert(::Type{NamedTuple}, model::PatMat{S}) where {S<:AbstractSurrogate}
     (model     = "PatMat",
      surrogate = string(S.name),

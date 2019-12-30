@@ -6,7 +6,7 @@ module ClassificationOnTop
 # -------------------------------------------------------------------------------
 using Statistics, LinearAlgebra, Random
 import Convex, ECOS, Roots, Mmap, ProgressMeter
-import Base: convert
+import Base: convert, show
 
 import Flux.Optimise
 import Flux.Optimise: Descent,
@@ -49,6 +49,7 @@ export
     solve,
     scores,
     predict,
+    exact_threshold,
     
     # Solvers
     AbstractSolver,
@@ -92,6 +93,7 @@ export
     RADAM,
 
     # Kernels (reexport MLKernels)
+    Kernel,
     ExponentialKernel,
     LaplacianKernel,
     SquaredExponentialKernel,

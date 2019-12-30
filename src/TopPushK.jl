@@ -12,6 +12,11 @@ struct TopPushK{S<:AbstractSurrogate, I<:Integer, T<:Real} <: AbstractTopPushK{S
 end
 
 
+function show(io::IO, model::TopPushK)
+    print(io, "TopPushK(", join([model.l, model.K, model.C], ","), ")")
+end
+
+
 function convert(::Type{NamedTuple}, model::TopPushK{S}) where {S<:AbstractSurrogate}
     (model     = "TopPushK",
      surrogate = string(S.name),
@@ -24,6 +29,11 @@ end
 struct TopPush{S<:AbstractSurrogate, T<:Real} <: AbstractTopPushK{S}
     l::S
     C::T
+end
+
+
+function show(io::IO, model::TopPush)
+    print(io, "TopPush(", join([model.l, model.C], ","), ")")
 end
 
 

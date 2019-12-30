@@ -15,6 +15,11 @@ function Hinge(ϑ::Real) where {T<:Real}
 end
 
 
+function show(io::IO, surrogate::Hinge)
+    print(io, "Hinge(", surrogate.ϑ, ")")
+end
+
+
 struct Quadratic{T<:Real, F1, F2, F3} <: AbstractSurrogate
     ϑ::T
     value::F1
@@ -29,4 +34,9 @@ function Quadratic(ϑ::T) where {T<:Real}
     gradient(s::Real) = 2*ϑ*max(0, 1 + ϑ*s)
 
     return Quadratic(ϑ, value, value_exact, gradient)
+end
+
+
+function show(io::IO, surrogate::Quadratic)
+    print(io, "Quadratic(", surrogate.ϑ, ")")
 end
