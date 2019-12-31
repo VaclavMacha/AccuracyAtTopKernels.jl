@@ -1,31 +1,16 @@
-struct PatMat{S<:AbstractSurrogate, T1<:Real, T2<:Real} <: AbstractModel
-    l1::S
-    l2::S
+@with_kw_noshow struct PatMat{S<:AbstractSurrogate, T1<:Real, T2<:Real} <: AbstractModel
     τ::T1
-    C::T2
+    C::T2 = 1
+    l1::S = Hinge(ϑ = 1.0)
+    l2::S = Hinge(ϑ = 1.0)
 
-    function PatMat(l1::S, l2::S, τ::T1, C::T2) where {S<:AbstractSurrogate, T1<:Real, T2<:Real}
-
-        @assert 0 < τ < 1  "The vaule of `τ` must lay in the interval (0,1)."
-
-        return new{S, T1, T2}(l1, l2, τ, C)
-    end
+    @assert 0 < τ < 1  "The vaule of `τ` must lay in the interval (0,1)."
 end
 
+PatMat(τ::Real) = PatMat(τ = τ)
 
-function show(io::IO, model::PatMat)
-    print(io, "PatMat(", join([model.l1, model.l1, model.τ, model.C], ","), ")")
-end
-
-
-function convert(::Type{NamedTuple}, model::PatMat{S}) where {S<:AbstractSurrogate}
-    (model     = "PatMat",
-     surrogate = string(S.name),
-     theta1    = model.l1.ϑ,
-     theta2    = model.l2.ϑ,
-     tau       = model.τ,
-     C         = model.C)
-end
+show(io::IO, model::PatMat) =
+    print(io, "PatMat($(model.τ), $(model.C), $(model.l1), $(model.l2))")
 
 
 # -------------------------------------------------------------------------------

@@ -1,48 +1,27 @@
-struct TopPushK{S<:AbstractSurrogate, I<:Integer, T<:Real} <: AbstractTopPushK{S}
-    l::S
+@with_kw_noshow struct TopPushK{S<:AbstractSurrogate, I<:Integer, T<:Real} <: AbstractTopPushK{S}
     K::I
-    C::T
+    C::T = 1
+    l::S = Hinge(ϑ = 1.0)
 
-    function TopPushK(l::S, K::I, C::T) where {S<:AbstractSurrogate, I<:Integer, T<:Real}
-
-        @assert K >= 1 "The vaule of `K` must be greater or equal to 1."
-
-        return new{S, I, T}(l, K, C)
-    end
+    @assert K >= 1 "The vaule of `K` must be greater or equal to 1."
 end
 
 
-function show(io::IO, model::TopPushK)
-    print(io, "TopPushK(", join([model.l, model.K, model.C], ","), ")")
+TopPushK(K::Int) = TopPushK(K = K)
+
+
+show(io::IO, model::TopPushK) =
+    print(io, "TopPushK($(model.K), $(model.C), $(model.l))")
+
+
+@with_kw_noshow struct TopPush{S<:AbstractSurrogate, T<:Real} <: AbstractTopPushK{S}
+    C::T = 1
+    l::S = Hinge(ϑ = 1.0)
 end
 
 
-function convert(::Type{NamedTuple}, model::TopPushK{S}) where {S<:AbstractSurrogate}
-    (model     = "TopPushK",
-     surrogate = string(S.name),
-     theta     = model.l.ϑ,
-     K         = model.K,
-     C         = model.C)
-end
-
-
-struct TopPush{S<:AbstractSurrogate, T<:Real} <: AbstractTopPushK{S}
-    l::S
-    C::T
-end
-
-
-function show(io::IO, model::TopPush)
-    print(io, "TopPush(", join([model.l, model.C], ","), ")")
-end
-
-
-function convert(::Type{NamedTuple}, model::TopPush{S}) where {S<:AbstractSurrogate}
-    (model     = "TopPush",
-     surrogate = string(S.name),
-     theta     = model.l.ϑ,
-     C         = model.C)
-end
+show(io::IO, model::TopPush) =
+    print(io, "TopPush($(model.C), $(model.l))")
 
 
 # -------------------------------------------------------------------------------

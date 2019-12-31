@@ -11,6 +11,7 @@ function ProgressBar(solver::S,
                      model::M,
                      data::D,
                      args...) where {S<:AbstractSolver, M<:AbstractModel, D<:AbstractData}
+
     msg = "$(M.name) $(D.name) loss - $(S.name) solver: "
     bar = ProgressMeter.Progress(solver.maxiter, 1, msg)
     L   = objective(model, data, args...)
@@ -35,30 +36,23 @@ end
 # -------------------------------------------------------------------------------
 # State 
 # -------------------------------------------------------------------------------
-struct State{T1, T2, D}
-    solver::T1
-    model::T2
+struct State{S<:AbstractSolver, M<:AbstractModel, D<:Dict}
+    solver::S
+    model::M
     dict::D
 end 
 
 
-function State(solver::AbstractSolver,
-               model::AbstractModel;
-               kwargs...)
-
-    dict = Dict(:iter_0 => values(kwargs))
-
-    return State(convert(NamedTuple, solver), convert(NamedTuple, model), dict)
-end
+State(solver::AbstractSolver, model::AbstractModel; kwargs...) =
+    State(deepcopy(solver), deepcopy(model), Dict(:iter_0 => values(kwargs)))
 
 
-function (state::State)(iter::Integer;
-                        kwargs...)
-    
+function (state::State)(iter::Integer; kwargs...)
     if in(iter, state.solver.iters)
         state.dict[Symbol(:iter_, iter)] = values(kwargs)
     end
 end
+
 
 function (state::State)(; kwargs...)
     state.dict[Symbol(:iter_, state.solver.maxiter)] = values(kwargs)
@@ -154,62 +148,39 @@ end
 # -------------------------------------------------------------------------------
 # Objective from named tuples
 # -------------------------------------------------------------------------------
-# Primal problems
-function objective(model::AbstractModel, data::Primal, solution::NamedTuple)
+objective(model::AbstractModel, data::Primal, solution::NamedTuple) =
     objective(model, data, solution.w, solution.t)
-end
 
-
-# Dual problems
-function objective(model::PatMat, data::Dual{<:DTrain}, solution::NamedTuple)
+objective(model::PatMat, data::Dual{<:DTrain}, solution::NamedTuple) =
     objective(model, data, solution.α, solution.β, solution.δ)
-end
 
-
-function objective(model::AbstractTopPushK, data::Dual{<:DTrain}, solution::NamedTuple)
+objective(model::AbstractTopPushK, data::Dual{<:DTrain}, solution::NamedTuple) =
     objective(model, data, solution.α, solution.β)
-end
 
 
 # -------------------------------------------------------------------------------
 # Exact thresholds
 # -------------------------------------------------------------------------------
-function exact_threshold(model::AbstractModel, data::Dual{<:Union{DTrain, DValidation}}, w::AbstractVector, T::Real)
-    exact_threshold(model, data, scores(model, data, w))
-end
-
-
-function exact_threshold(model::AbstractModel, data::Dual{<:Union{DTrain, DValidation}}, α::AbstractVector, β::AbstractVector)
-    exact_threshold(model, data, scores(model, data, α, β))
-end
-
-# Primal problems
-function exact_threshold(model::PatMat, data::Primal, s::AbstractVector)
+exact_threshold(model::PatMat, data::Primal, s) =
     any(isnan.(s)) ? NaN : quantile(s, 1 - model.τ)
-end
 
-
-function exact_threshold(model::TopPushK, data::Primal, s::AbstractVector)
+exact_threshold(model::TopPushK, data::Primal, s) =
     mean(partialsort(s[data.ind_neg], 1:model.K, rev = true))
-end
 
-
-function exact_threshold(model::TopPush, data::Primal, s::AbstractVector)
+exact_threshold(model::TopPush, data::Primal, s) =
     maximum(s[data.ind_neg])
-end
 
+exact_threshold(model::AbstractModel, data::Primal, w, T) =
+    exact_threshold(model, data, scores(model, data, w))
 
-# Dual problems
-function exact_threshold(model::PatMat, data::Dual{<:Union{DTrain, DValidation}}, s::AbstractVector)
+exact_threshold(model::PatMat, data::Dual{<:Union{DTrain, DValidation}}, s) =
     any(isnan.(s)) ? NaN : quantile(s, 1 - model.τ)
-end
 
-
-function exact_threshold(model::TopPushK, data::Dual{<:Union{DTrain, DValidation}}, s::AbstractVector)
+exact_threshold(model::TopPushK, data::Dual{<:Union{DTrain, DValidation}}, s) =
     mean(partialsort(s[data.type.ind_neg], 1:model.K, rev = true))
-end
 
-
-function exact_threshold(model::TopPush, data::Dual{<:Union{DTrain, DValidation}}, s::AbstractVector)
+exact_threshold(model::TopPush, data::Dual{<:Union{DTrain, DValidation}}, s) =
     maximum(s[data.type.ind_neg])
-end
+
+exact_threshold(model::AbstractModel, data::Dual{<:Union{DTrain, DValidation}}, α, β) =
+    exact_threshold(model, data, scores(model, data, α, β))

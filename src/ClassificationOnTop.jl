@@ -4,7 +4,7 @@ module ClassificationOnTop
 # -------------------------------------------------------------------------------
 # Used packages
 # -------------------------------------------------------------------------------
-using Statistics, LinearAlgebra, Random
+using Statistics, LinearAlgebra, Random, Parameters
 import Convex, Roots, Mmap, ProgressMeter
 import ECOS: ECOSSolver
 import Base: convert, show
@@ -123,97 +123,45 @@ abstract type AbstractTopPushK{AbstractSurrogate} <: AbstractModel end
 abstract type AbstractSolver end
 
 
-struct General{I<:Integer,S} <: AbstractSolver
-    seed::I
-    solver::S
+@with_kw_noshow struct General{I<:Integer,S} <: AbstractSolver
+    seed::I   = rand(1:10000)
+    solver::S = ECOSSolver(verbose = false)
 end
 
 
-function General(; solver::Any   = ECOSSolver(verbose = false),
-                   seed::Integer = rand(1:10000))
-    return General(seed, solver)
+show(io::IO, solver::General) =
+    print(io, "General($(typeof(solver.solver).name))")
+
+
+@with_kw_noshow struct Gradient{I<:Integer, B<:Bool, O, V} <: AbstractSolver
+    seed::I      = rand(1:10000)
+    maxiter::I   = 1000
+    verbose::B   = true
+    optimizer::O = ADAM()
+    iters::V     = Int[]
 end
 
 
-function show(io::IO, solver::General)
-    print(io, "General(", typeof(solver.solver), ")")
+function optimizername(opt::O) where {O} 
+    args = [getfield(opt, key) for key in fieldnames(O) if !(fieldtype(O, key) <: IdDict)]
+    return "$(O.name)($(join(args, ",")))"
 end
 
 
-function convert(::Type{NamedTuple}, solver::General)
-    (solver    = "General",
-     optimizer = string(typeof(solver.solver).name),
-     seed      = solver.seed)
+show(io::IO, solver::Gradient) =
+    print(io, "Gradient($(solver.maxiter), $(optimizername(solver.optimizer)))")
+
+
+@with_kw_noshow  struct Coordinate{I<:Integer, B<:Bool, V} <: AbstractSolver
+    seed::I    = rand(1:10000)
+    maxiter::I = 1000
+    verbose::B = true
+    iters::V   = Int[]
 end
 
 
-
-struct Gradient{I<:Integer, B<:Bool, O, V} <: AbstractSolver
-    seed::I
-    maxiter::I
-    verbose::B
-    optimizer::O
-    iters::V
-end
-
-
-function Gradient(; maxiter::Integer      = 1000,
-                    verbose::Bool         = true,
-                    optimizer::Any        = Optimise.ADAM(),
-                    iters::AbstractVector = [],
-                    seed::Integer         = rand(1:10000))
-
-    return Gradient(seed, maxiter, verbose, optimizer, iters)
-end
-
-
-function show(io::IO, solver::Gradient)
-    opt  = solver.optimizer
-    T    = typeof(opt)
-    vals = [getfield(opt, field) for field in fieldnames(T) if !(fieldtype(T, field) <: IdDict)]
-    name = string(T.name, "(", join(vals, ","), ")")
-
-    print(io, "Gradient(", join([name, solver.maxiter], ","), ")")
-end
-
-
-function convert(::Type{NamedTuple}, solver::Gradient)
-    (solver    = "Gradient",
-     optimizer = string(typeof(solver.optimizer).name),
-     maxiter   = solver.maxiter,
-     iters     = solver.iters,
-     seed      = solver.seed)
-end
-
-
-struct Coordinate{I<:Integer, B<:Bool, V} <: AbstractSolver
-    seed::I
-    maxiter::I
-    verbose::B
-    iters::V
-end
-
-
-function Coordinate(; maxiter::Integer      = 1000,
-                      verbose::Bool         = true,
-                      iters::AbstractVector = [],
-                      seed::Integer         = rand(1:10000))
-
-    return Coordinate(seed, maxiter, verbose, iters)
-end
-
-
-function show(io::IO, solver::Coordinate)
-    print(io, "Coordinate(", solver.maxiter, ")")
-end
-
-
-function convert(::Type{NamedTuple}, solver::Coordinate)
-    (solver    = "Coordinate",
-     maxiter   = solver.maxiter,
-     iters     = solver.iters,
-     seed      = solver.seed)
-end
+show(io::IO, solver::Coordinate) =
+    print(io, "Coordinate($(solver.maxiter))")
 
 
 mutable struct BestUpdate{I<:Integer, T<:Real}

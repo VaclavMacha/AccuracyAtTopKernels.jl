@@ -8,24 +8,20 @@ function test_scores()
     Xtest  = rand(M, dim)
     ytest = rand(N) .>= 0.75
 
-    model1 = PatMat(Hinge(1), Hinge(1), 0.9, 1.1)
-    model2 = TopPushK(Hinge(1), 5, 1.1)
-    model3 = TopPush(Hinge(1), 1.1)
-
     kernels = [LinearKernel(),
                SquaredExponentialKernel(),
                RationalQuadraticKernel()]
 
     @testset "PatMat with $(typeof(kernel).name) kernel" for kernel in kernels 
-        test_scores(model1, kernel, Xtrain, ytrain, Xtest, ytest)
+        test_scores(PatMat(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
     @testset "TopPushK with $(typeof(kernel).name) kernel" for kernel in kernels 
-        test_scores(model2, kernel, Xtrain, ytrain, Xtest, ytest)
+        test_scores(TopPushK(5), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
     @testset "TopPush with $(typeof(kernel).name) kernel" for kernel in kernels 
-        test_scores(model3, kernel, Xtrain, ytrain, Xtest, ytest)
+        test_scores(TopPush(), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 end
 

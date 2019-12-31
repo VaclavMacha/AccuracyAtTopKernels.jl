@@ -15,7 +15,7 @@ function test_dual_problems()
     @testset "PatMat with $surrogate loss" for surrogate in [Hinge, Quadratic] 
         l1    = surrogate(ϑ1);
         l2    = surrogate(ϑ2);
-        model = PatMat(l1, l2, τ, C);
+        model = PatMat(τ, C, l1, l2);
         data  = Dual(model, X, y);
 
         test_dual(model, data, 30000, 200000, Descent(0.001))
@@ -23,7 +23,7 @@ function test_dual_problems()
 
     @testset "TopPushK with $surrogate loss" for surrogate in [Hinge, Quadratic] 
         l     = surrogate(ϑ1);
-        model = TopPushK(l, K, C);
+        model = TopPushK(K, C, l);
         data  = Dual(model, X, y);
 
         test_dual(model, data, 30000, 200000, Descent(0.001))
@@ -31,7 +31,7 @@ function test_dual_problems()
 
     @testset "TopPush with $surrogate loss" for surrogate in [Hinge, Quadratic] 
         l     = surrogate(ϑ1);
-        model = TopPush(l, C);
+        model = TopPush(C, l);
         data  = Dual(model, X, y);
 
         test_dual(model, data, 30000, 200000, Descent(0.001))

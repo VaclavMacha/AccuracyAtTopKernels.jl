@@ -19,9 +19,7 @@ end
 
 
 function test_dual()
-    models = [PatMat(Hinge(0.9), Hinge(0.9), 0.9, 1.1),
-              TopPushK(Hinge(0.9), 5, 1.1),
-              TopPush(Hinge(0.9), 1.1)]
+    models = [PatMat(0.5), TopPushK(5), TopPush()]
 
     @testset "$(typeof(model).name)" for model in models
         test_dual(model)
