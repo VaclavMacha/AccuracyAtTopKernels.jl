@@ -21,7 +21,6 @@ import Flux.Optimise: Descent,
                       ADADelta,
                       AMSGrad,
                       NADAM,
-                      ADAMW,
                       RADAM
 
 import MLKernels
@@ -42,7 +41,6 @@ import MLKernels: Orientation,
                   PowerKernel,
                   LogKernel,
                   SigmoidKernel
-
 
 # -------------------------------------------------------------------------------
 # Export 
@@ -81,18 +79,18 @@ export
             DTest, 
 
     # Gradient descent optimizers (reexport Flux.Optimise)
-    Descent,
-    ADAM,
-    Momentum,
-    Nesterov,
-    RMSProp,
-    ADAGrad,
-    AdaMax,
-    ADADelta,
-    AMSGrad,
-    NADAM,
-    ADAMW,
-    RADAM,
+    AbstractOptimizer,
+        Descent,
+        ADAM,
+        Momentum,
+        Nesterov,
+        RMSProp,
+        ADAGrad,
+        AdaMax,
+        ADADelta,
+        AMSGrad,
+        NADAM,
+        RADAM,
 
     # Kernels (reexport MLKernels)
     Kernel,
@@ -122,6 +120,15 @@ abstract type AbstractModel end
 abstract type AbstractTopPushK{AbstractSurrogate} <: AbstractModel end
 abstract type AbstractSolver end
 
+AbstractOptimizer = Union{Descent, ADAM, Momentum, Nesterov, RMSProp, ADAGrad,
+                          AdaMax, ADADelta, AMSGrad, NADAM, RADAM}
+
+
+function show(io::IO, opt::O) where {O<:AbstractOptimizer} 
+    args   = [getfield(opt, field) for field in fieldnames(O) if !in(field, (:velocity, :acc, :state))]
+    print(io, "$(O.name)($(join(args, ",")))")
+end
+
 
 @with_kw_noshow struct General{I<:Integer,S} <: AbstractSolver
     seed::I   = rand(1:10000)
@@ -133,7 +140,7 @@ show(io::IO, solver::General) =
     print(io, "General($(typeof(solver.solver).name))")
 
 
-@with_kw_noshow struct Gradient{I<:Integer, B<:Bool, O, V} <: AbstractSolver
+@with_kw_noshow struct Gradient{I<:Integer, B<:Bool, O<:AbstractOptimizer, V} <: AbstractSolver
     seed::I      = rand(1:10000)
     maxiter::I   = 1000
     verbose::B   = true
@@ -142,14 +149,8 @@ show(io::IO, solver::General) =
 end
 
 
-function optimizername(opt::O) where {O} 
-    args = [getfield(opt, key) for key in fieldnames(O) if !(fieldtype(O, key) <: IdDict)]
-    return "$(O.name)($(join(args, ",")))"
-end
-
-
 show(io::IO, solver::Gradient) =
-    print(io, "Gradient($(solver.maxiter), $(optimizername(solver.optimizer)))")
+    print(io, "Gradient($(solver.maxiter), $(solver.optimizer))")
 
 
 @with_kw_noshow  struct Coordinate{I<:Integer, B<:Bool, V} <: AbstractSolver
