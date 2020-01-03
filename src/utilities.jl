@@ -43,8 +43,8 @@ struct State{S<:AbstractSolver, M<:AbstractModel, D<:Dict}
 end 
 
 
-State(solver::AbstractSolver, model::AbstractModel; kwargs...) =
-    State(deepcopy(solver), deepcopy(model), Dict(:iter_0 => values(kwargs)))
+State(solver::AbstractSolver, model::AbstractModel, key::Symbol = :initial; kwargs...) =
+    State(deepcopy(solver), deepcopy(model), Dict(key => values(kwargs)))
 
 
 function (state::State)(iter::Integer; kwargs...)
@@ -55,7 +55,7 @@ end
 
 
 function (state::State)(; kwargs...)
-    state.dict[Symbol(:iter_, state.solver.maxiter)] = values(kwargs)
+    state.dict[Symbol(:optimal, state.solver.maxiter)] = values(kwargs)
 end
 
 

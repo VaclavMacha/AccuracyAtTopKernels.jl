@@ -4,7 +4,7 @@ function solve(solver::General, model::AbstractModel, data::Primal)
 
     w, t  = optimize(solver, model, data)
     w     = Vector(w)
-    state = State(solver, model; w = w, t = t)
+    state = State(solver, model, :optimal; w = w, t = t)
 
     return (w = w, t = t, state = state)
 end
@@ -17,7 +17,7 @@ function solve(solver::General, model::PatMat, data::Dual{<:DTrain})
     α       = Vector(α)
     β       = Vector(β)
     t       = exact_threshold(model, data, α, β)
-    state   = State(solver, model; α = α, β = β, δ = δ)
+    state   = State(solver, model, :optimal; α = α, β = β, δ = δ)
 
     return (α = α, β = β, δ = δ, t = t, state = state)
 end
@@ -30,7 +30,7 @@ function solve(solver::General, model::AbstractTopPushK, data::Dual{<:DTrain})
     α     = Vector(α)
     β     = Vector(β)
     t     = exact_threshold(model, data, α, β)
-    state = State(solver, model; α = α, β = β)
+    state = State(solver, model, :optimal; α = α, β = β)
 
     return (α = α, β = β, t = t, state = state)
 end
