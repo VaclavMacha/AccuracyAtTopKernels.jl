@@ -55,7 +55,7 @@ end
 
 
 function (state::State)(; kwargs...)
-    state.dict[Symbol(:optimal, state.solver.maxiter)] = values(kwargs)
+    state.dict[:optimal] = values(kwargs)
 end
 
 
