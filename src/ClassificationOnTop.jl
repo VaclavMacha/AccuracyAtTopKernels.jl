@@ -6,9 +6,10 @@ module ClassificationOnTop
 # -------------------------------------------------------------------------------
 using Statistics, LinearAlgebra, Random, Parameters
 import Convex, Roots, Mmap, ProgressMeter
-import ECOS: ECOSSolver
 import Base: convert, show
 
+import ECOS
+import ECOS: ECOSSolver
 
 import Flux.Optimise
 import Flux.Optimise: Descent,
@@ -56,6 +57,7 @@ export
         General,
         Gradient,
         Coordinate,
+    ECOSSolver,
     
     # Surrogates
     AbstractSurrogate,
