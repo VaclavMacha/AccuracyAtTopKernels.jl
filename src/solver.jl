@@ -4,7 +4,7 @@ function solve(solver::General, model::AbstractModel, data::Primal)
 
     w, t  = optimize(solver, model, data)
     w     = Vector(w)
-    state = State(solver, model, :optimal; w = w, t = t)
+    state = State(solver, model, :optimal; w = copy(w), t = copy(t))
 
     return (w = w, t = t, state = state)
 end
@@ -17,7 +17,7 @@ function solve(solver::General, model::PatMat, data::Dual{<:DTrain})
     α       = Vector(α)
     β       = Vector(β)
     t       = exact_threshold(model, data, α, β)
-    state   = State(solver, model, :optimal; α = α, β = β, δ = δ)
+    state   = State(solver, model, :optimal; α = copy(α), β = copy(β), δ = copy(δ))
 
     return (α = α, β = β, δ = δ, t = t, state = state)
 end
@@ -30,7 +30,7 @@ function solve(solver::General, model::AbstractTopPushK, data::Dual{<:DTrain})
     α     = Vector(α)
     β     = Vector(β)
     t     = exact_threshold(model, data, α, β)
-    state = State(solver, model, :optimal; α = α, β = β)
+    state = State(solver, model, :optimal; α = copy(α), β = copy(β))
 
     return (α = α, β = β, t = t, state = state)
 end
@@ -45,7 +45,7 @@ function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float6
     w, s, Δ  = initialization(model, data, w0)
     t        = threshold(model, data, s)
 
-    state    = State(solver, model; w = Vector(w))
+    state    = State(solver, model; w = copy(w))
     progress = ProgressBar(solver, model, data, w, t, s)
 
     # optimization
@@ -59,10 +59,10 @@ function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float6
 
         # update solution
         minimize!(solver, w, Δ)
-        state(iter; w = Vector(w))
+        state(iter; w = copy(w))
     end
 
-    state(; w = Vector(w))
+    state(; w = copy(w))
 
     return (w = Vector(w), t = threshold(model, data, data.X * w), state = state)
 end
@@ -78,7 +78,7 @@ function solve(solver::Gradient, model::PatMat, data::Dual{<:DTrain}, α0 = Floa
     α, β, δ, αβδ, s = initialization(model, data, α0, β0)
     Δ               = zero(αβδ)
 
-    state    = State(solver, model; α = Vector(α), β = Vector(β), δ = δ[1])
+    state    = State(solver, model; α = copy(α), β = copy(β), δ = copy(δ[1]))
     progress = ProgressBar(solver, model, data, α, β, δ[1], s)
 
     # optimization
@@ -93,12 +93,12 @@ function solve(solver::Gradient, model::PatMat, data::Dual{<:DTrain}, α0 = Floa
         gradient!(model, data, α, β, δ, s, Δ)
         maximize!(solver, αβδ, Δ)
         projection!(model, data, α, β, δ)
-        state(iter; α = Vector(α), β = Vector(β), δ = δ[1])
+        state(iter; α = copy(α), β = copy(β), δ = copy(δ[1]))
     end
 
     α = Vector(α)
     β = Vector(β)
-    state(α = α, β = β, δ = δ[1])
+    state(α = copy(α), β = copy(β), δ = copy(δ[1]))
 
     return (α = α, β = β, δ = δ[1], t = exact_threshold(model, data, α, β), state = state)
 end
@@ -111,7 +111,7 @@ function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain}, 
     α, β, αβ, s = initialization(model, data, α0, β0)
     Δ           = zero(αβ)
 
-    state    = State(solver, model; α = Vector(α), β = Vector(β))
+    state    = State(solver, model; α = copy(α), β = copy(β))
     progress = ProgressBar(solver, model, data, α, β, s)
 
     # optimization
@@ -126,12 +126,12 @@ function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain}, 
         gradient!(model, data, α, β, s, Δ)
         maximize!(solver, αβ, Δ)
         projection!(model, data, α, β)
-        state(iter; α = α, β = β)
+        state(iter; α = copy(α), β = copy(β))
     end
 
     α = Vector(α)
     β = Vector(β)
-    state(α = α, β = β)
+    state(; α = copy(α), β = copy(β))
 
     return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β), state = state)
 end
@@ -153,7 +153,7 @@ function solve(solver::Coordinate,
     S <: Hinge     && ( βtmp = sort(β, rev = true) )
     S <: Quadratic && ( βtmp = [sum(abs2, β)/(4*model.l2.ϑ^2)] )
  
-    state    = State(solver, model; α = Vector(α), β = Vector(β), δ = δ[1])
+    state    = State(solver, model; α = copy(α), β = copy(β), δ = copy(δ[1]))
     progress = ProgressBar(solver, model, data, α, β, δ[1], s)
 
     # optimization
@@ -165,12 +165,12 @@ function solve(solver::Coordinate,
 
         # progress and state
         progress(solver, model, data, iter, α, β, δ[1], s)
-        state(iter; α = Vector(α), β = Vector(β), δ = δ[1])
+        state(iter; α = copy(α), β = copy(β), δ = copy(δ[1]))
     end
 
     α = Vector(α)
     β = Vector(β)
-    state(α = α, β = β, δ = δ[1])
+    state(; α = copy(α), β = copy(β), δ = copy(δ[1]))
 
     return (α = α, β = β, δ = δ[1], t = exact_threshold(model, data, α, β), state = state)
 end
@@ -189,7 +189,7 @@ function solve(solver::Coordinate,
     αsum        = [sum(α)]
     βsort       = sort(β, rev = true)
 
-    state    = State(solver, model; α = Vector(α), β = Vector(β))
+    state    = State(solver, model; α = copy(α), β = copy(β))
     progress = ProgressBar(solver, model, data, α, β, s)
 
     # optimization
@@ -201,12 +201,12 @@ function solve(solver::Coordinate,
 
         # progress and state
         progress(solver, model, data, iter,  α, β, s)
-        state(iter; α = Vector(α), β = Vector(β))
+        state(iter; α = copy(α), β = copy(β))
     end
 
     α = Vector(α)
     β = Vector(β)
-    state(; α = α, β = β)
+    state(; α = copy(α), β = copy(β))
 
     return (α = α, β = β, t = exact_threshold(model, data, α, β), state = state)
 end

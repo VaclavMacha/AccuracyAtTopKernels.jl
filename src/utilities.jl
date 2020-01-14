@@ -44,12 +44,12 @@ end
 
 
 State(solver::AbstractSolver, model::AbstractModel, key::Symbol = :initial; kwargs...) =
-    State(deepcopy(solver), deepcopy(model), Dict(key => values(kwargs)))
+    State(deepcopy(solver), deepcopy(model), Dict{Union{Symbol, Int64}, Any}(key => values(kwargs)))
 
 
 function (state::State)(iter::Integer; kwargs...)
     if in(iter, state.solver.iters)
-        state.dict[Symbol(:iter_, iter)] = values(kwargs)
+        state.dict[iter] = values(kwargs)
     end
 end
 
