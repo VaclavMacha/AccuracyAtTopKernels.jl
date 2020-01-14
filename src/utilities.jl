@@ -36,26 +36,28 @@ end
 # -------------------------------------------------------------------------------
 # State 
 # -------------------------------------------------------------------------------
-struct State{S<:AbstractSolver, M<:AbstractModel, D<:Dict}
+struct State{S<:AbstractSolver, M<:AbstractModel, D<:Dict, T}
     solver::S
     model::M
     dict::D
+    time_init::T
 end 
 
 
-State(solver::AbstractSolver, model::AbstractModel, key::Symbol = :initial; kwargs...) =
-    State(deepcopy(solver), deepcopy(model), Dict{Union{Symbol, Int64}, Any}(key => values(kwargs)))
-
+function State(solver::AbstractSolver, model::AbstractModel, key::Symbol = :initial, t0::Real = 0; kwargs...)
+    d = Dict{Union{Symbol, Int64}, Any}(key => (values(kwargs)..., time = t0))
+    State(deepcopy(solver), deepcopy(model), d, time())
+end
 
 function (state::State)(iter::Integer; kwargs...)
     if in(iter, state.solver.iters)
-        state.dict[iter] = values(kwargs)
+        state.dict[iter] = (values(kwargs)..., time = time() - state.time_init)
     end
 end
 
 
 function (state::State)(; kwargs...)
-    state.dict[:optimal] = values(kwargs)
+    state.dict[:optimal] = (values(kwargs)..., time = time() - state.time_init)
 end
 
 
