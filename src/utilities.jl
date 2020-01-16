@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------------
-# Progress bar utilities
+# Progress bar and State
 # -------------------------------------------------------------------------------
 mutable struct ProgressBar{P<:ProgressMeter.Progress, T<:Real}
     bar::P
@@ -7,57 +7,60 @@ mutable struct ProgressBar{P<:ProgressMeter.Progress, T<:Real}
     L::T
 end 
 
-function ProgressBar(solver::S,
-                     model::M,
-                     data::D,
-                     args...) where {S<:AbstractSolver, M<:AbstractModel, D<:AbstractData}
 
-    msg = "$(M.name) $(D.name) loss - $(S.name) solver: "
-    bar = ProgressMeter.Progress(solver.maxiter, 1, msg)
-    L   = objective(model, data, args...)
-    return ProgressBar(bar, L, L)
-end
-
-function (progress::ProgressBar)(solver::AbstractSolver,
-                                 model::AbstractModel,
-                                 data::AbstractData,
-                                 iter::Integer,
-                                 args...)
-    
-    if solver.verbose
-        if mod(iter, ceil(Int, solver.maxiter/10)) == 0
-            progress.L = objective(model, data, args...)
-        end
-        ProgressMeter.next!(progress.bar; showvalues = [(:L0, progress.L0), (:L, progress.L)])
-    end
-end
-
-
-# -------------------------------------------------------------------------------
-# State 
-# -------------------------------------------------------------------------------
-struct State{S<:AbstractSolver, M<:AbstractModel, D<:Dict, T}
-    solver::S
-    model::M
+struct State{S, D<:Dict, T}
+    seed::S
     dict::D
     time_init::T
 end 
 
 
-function State(solver::AbstractSolver, model::AbstractModel, key::Symbol = :initial, t0::Real = 0; kwargs...)
-    d = Dict{Union{Symbol, Int64}, Any}(key => (values(kwargs)..., time = t0))
-    State(deepcopy(solver), deepcopy(model), d, time())
+function ProgStateInit(solver::S,
+                       model::M,
+                       data::D,
+                       scores::AbstractVector;
+                       kwargs...) where {S<:AbstractSolver, M<:AbstractModel, D<:AbstractData}
+
+    msg  = "$(M.name) $(D.name) loss - $(S.name) solver: "
+    bar  = ProgressMeter.Progress(solver.maxiter, 1, msg)
+    L    = objective(model, data, values(kwargs)..., scores)
+    dict = Dict{Union{Symbol, Int64}, Any}(:initial => (values(kwargs)..., time = 0, L = L))
+
+    return State(solver.seed, dict, time()), ProgressBar(bar, L, L)
 end
 
-function (state::State)(iter::Integer; kwargs...)
-    if in(iter, state.solver.iters)
-        state.dict[iter] = (values(kwargs)..., time = time() - state.time_init)
+
+ProgStateInit(solver::General, model::AbstractModel, tm::Real; kwargs...) =
+    State(solver.seed, Dict{Union{Symbol, Int64}, Any}(:optimal => (values(kwargs)..., time = tm)), time())
+
+
+function update!(state::State,
+                 progress::ProgressBar,
+                 solver::AbstractSolver,
+                 model::AbstractModel,
+                 data::AbstractData,
+                 iter::Integer,
+                 scores::AbstractVector;
+                 kwargs...)
+
+    condition_1 = iter == solver.maxiter
+    condition_2 = iter in solver.iters
+    condition_3 = mod(iter, ceil(Int, solver.maxiter/10)) == 0 && solver.verbose
+
+    if condition_1 || condition_2 || condition_3
+        L = objective(model, data, values(kwargs)..., scores)
+        progress.L = L
     end
-end
 
+    if solver.verbose
+        ProgressMeter.next!(progress.bar; showvalues = [(:L0, progress.L0), (:L, progress.L)])
+    end
 
-function (state::State)(; kwargs...)
-    state.dict[:optimal] = (values(kwargs)..., time = time() - state.time_init)
+    if condition_1
+        state.dict[:optimal] = (values(kwargs)..., time = time() - state.time_init, L = L)
+    elseif condition_2
+        state.dict[iter]     = (values(kwargs)..., time = time() - state.time_init, L = L)
+    end
 end
 
 

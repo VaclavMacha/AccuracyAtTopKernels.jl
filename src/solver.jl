@@ -4,10 +4,9 @@ function solve(solver::General, model::AbstractModel, data::Primal)
 
     val, tm, = @timed optimize(solver, model, data)
     w, t     = val
-    w        = Vector(w)
-    state    = State(solver, model, :optimal, tm; w = copy(w), t = copy(t))
+    state    = ProgStateInit(solver, model, tm; w = copy(w), t = copy(t))
 
-    return (w = w, t = t, state = state)
+    return (w = copy(w), t = copy(t), state = state)
 end
 
 
@@ -16,12 +15,10 @@ function solve(solver::General, model::PatMat, data::Dual{<:DTrain})
 
     val, tm, = @timed optimize(solver, model, data)
     α, β, δ  = val
-    α        = Vector(α)
-    β        = Vector(β)
     t        = exact_threshold(model, data, α, β)
-    state    = State(solver, model, :optimal, tm; α = copy(α), β = copy(β), δ = copy(δ))
+    state    = ProgStateInit(solver, model, tm; α = copy(α), β = copy(β), δ = copy(δ))
 
-    return (α = α, β = β, δ = δ, t = t, state = state)
+    return (α = copy(α), β = copy(β), δ = copy(δ), t = copy(t), state = state)
 end
 
 
@@ -30,12 +27,10 @@ function solve(solver::General, model::AbstractTopPushK, data::Dual{<:DTrain})
 
     val, tm, = @timed optimize(solver, model, data)
     α, β     = val
-    α        = Vector(α)
-    β        = Vector(β)
     t        = exact_threshold(model, data, α, β)
-    state    = State(solver, model, :optimal, tm; α = copy(α), β = copy(β))
+    state    = ProgStateInit(solver, model, tm; α = copy(α), β = copy(β))
 
-    return (α = α, β = β, t = t, state = state)
+    return (α = copy(α), β = copy(β), t = copy(t), state = state)
 end
 
 
@@ -45,29 +40,26 @@ end
 function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float64[])
     Random.seed!(solver.seed)
 
-    w, s, Δ  = initialization(model, data, w0)
-    t        = threshold(model, data, s)
-
-    progress = ProgressBar(solver, model, data, w, t, s)
-    state    = State(solver, model; w = copy(w))
+    w, s, Δ         = initialization(model, data, w0)
+    t               = threshold(model, data, s)
+    state, progress = ProgStateInit(solver, model, data, s; w = copy(w), t = copy(t))
 
     # optimization
     for iter in 1:solver.maxiter
+        # progress and state
+        update!(state, progress, solver, model, data, iter - 1, s; w = copy(w), t = copy(t))
+
         # update score and compute gradient
         s .= data.X * w
         t  = gradient!(model, data, w, s, Δ)
-
-        # progress and state
-        progress(solver, model, data, iter, w, t, s)
-
-        # update solution
         minimize!(solver, w, Δ)
-        state(iter; w = copy(w))
     end
 
-    state(; w = copy(w))
+    s .= data.X * w
+    t  = threshold(model, data, data.X * w)
+    update!(state, progress, solver, model, data, solver.maxiter, s; w = copy(w), t = copy(t))
 
-    return (w = Vector(w), t = threshold(model, data, data.X * w), state = state)
+    return (w = copy(w), t = copy(t), state = state)
 end
 
 
@@ -75,68 +67,68 @@ end
 # Dual problem - gradient solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Gradient, model::PatMat, data::Dual{<:DTrain}, α0 = Float64[], β0 = Float64[])
+function solve(solver::Gradient,
+               model::PatMat,
+               data::Dual{<:DTrain},
+               α0 = Float64[],
+               β0 = Float64[])
+
     Random.seed!(solver.seed)
 
     α, β, δ, αβδ, s = initialization(model, data, α0, β0)
     Δ               = zero(αβδ)
-
-    progress = ProgressBar(solver, model, data, α, β, δ[1], s)
-    state    = State(solver, model; α = copy(α), β = copy(β), δ = copy(δ[1]))
+    state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
 
     # optimization
     for iter in 1:solver.maxiter
-        # update score
-        s .= data.K * vcat(α, β)
-
-        # progress and state
-        progress(solver, model, data, iter,  α, β, δ[1], s)
-
         # compute gradient and update solution
         gradient!(model, data, α, β, δ, s, Δ)
         maximize!(solver, αβδ, Δ)
         projection!(model, data, α, β, δ)
-        state(iter; α = copy(α), β = copy(β), δ = copy(δ[1]))
+
+        # update score
+        s .= data.K * vcat(α, β)
+ 
+        # progress and state
+        update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
     end
 
-    α = Vector(α)
-    β = Vector(β)
-    state(α = copy(α), β = copy(β), δ = copy(δ[1]))
+    t = exact_threshold(model, data, α, β)
 
-    return (α = α, β = β, δ = δ[1], t = exact_threshold(model, data, α, β), state = state)
+    return (α = copy(α), β = copy(β), δ = copy(δ[1]), t = t, state = state)
 end
 
 
 # TopPushK
-function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain}, α0 = Float64[], β0 = Float64[])
+function solve(solver::Gradient,
+               model::AbstractTopPushK,
+               data::Dual{<:DTrain},
+               α0 = Float64[],
+               β0 = Float64[])
+
     Random.seed!(solver.seed)
 
-    α, β, αβ, s = initialization(model, data, α0, β0)
-    Δ           = zero(αβ)
-
-    progress = ProgressBar(solver, model, data, α, β, s)
-    state    = State(solver, model; α = copy(α), β = copy(β))
+    α, β, αβ, s     = initialization(model, data, α0, β0)
+    Δ               = zero(αβ)
+    state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β))
 
     # optimization
     for iter in 1:solver.maxiter
-        # update score
-        s .= data.K * vcat(α, β)
-
-        # progress and state
-        progress(solver, model, data, iter,  α, β, s)
-
         # ccompute gradient and update solution
         gradient!(model, data, α, β, s, Δ)
         maximize!(solver, αβ, Δ)
         projection!(model, data, α, β)
-        state(iter; α = copy(α), β = copy(β))
+
+        # update score
+        s .= data.K * vcat(α, β)
+
+        # progress and state
+        update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β))
     end
+    
+    t = exact_threshold(model, data, α, β)
 
-    α = Vector(α)
-    β = Vector(β)
-    state(; α = copy(α), β = copy(β))
-
-    return (α = Vector(α), β = Vector(β), t = exact_threshold(model, data, α, β), state = state)
+    return (α = copy(α), β = copy(β), t = copy(t) , state = state)
 end
 
 
@@ -156,8 +148,7 @@ function solve(solver::Coordinate,
     S <: Hinge     && ( βtmp = sort(β, rev = true) )
     S <: Quadratic && ( βtmp = [sum(abs2, β)/(4*model.l2.ϑ^2)] )
  
-    progress = ProgressBar(solver, model, data, α, β, δ[1], s)
-    state    = State(solver, model; α = copy(α), β = copy(β), δ = copy(δ[1]))
+    state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
 
     # optimization
     for iter in 1:solver.maxiter
@@ -167,15 +158,12 @@ function solve(solver::Coordinate,
         iszero(best.Δ) || apply!(model, data, best, α, β, δ, αβδ, s, βtmp)
 
         # progress and state
-        progress(solver, model, data, iter, α, β, δ[1], s)
-        state(iter; α = copy(α), β = copy(β), δ = copy(δ[1]))
+        update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
     end
 
-    α = Vector(α)
-    β = Vector(β)
-    state(; α = copy(α), β = copy(β), δ = copy(δ[1]))
+    t = exact_threshold(model, data, α, β)
 
-    return (α = α, β = β, δ = δ[1], t = exact_threshold(model, data, α, β), state = state)
+    return (α = copy(α), β = copy(β), δ = copy(δ[1]), t = t, state = state)
 end
 
 
@@ -188,12 +176,10 @@ function solve(solver::Coordinate,
 
     Random.seed!(solver.seed)
 
-    α, β, αβ, s = initialization(model, data, α0, β0)
-    αsum        = [sum(α)]
-    βsort       = sort(β, rev = true)
-
-    progress = ProgressBar(solver, model, data, α, β, s)
-    state    = State(solver, model; α = copy(α), β = copy(β))
+    α, β, αβ, s     = initialization(model, data, α0, β0)
+    αsum            = [sum(α)]
+    βsort           = sort(β, rev = true)
+    state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β))
 
     # optimization
     for iter in 1:solver.maxiter
@@ -203,14 +189,11 @@ function solve(solver::Coordinate,
         iszero(best.Δ) || apply!(model, data, best, α, β, αβ, s, αsum, βsort)
 
         # progress and state
-        progress(solver, model, data, iter,  α, β, s)
-        state(iter; α = copy(α), β = copy(β))
+        update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β))
     end
 
-    α = Vector(α)
-    β = Vector(β)
-    state(; α = copy(α), β = copy(β))
+    t = exact_threshold(model, data, α, β)
 
-    return (α = α, β = β, t = exact_threshold(model, data, α, β), state = state)
+    return (α = copy(α), β = copy(β), t = copy(t), state = state)
 end
 
