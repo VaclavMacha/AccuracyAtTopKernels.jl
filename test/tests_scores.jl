@@ -28,6 +28,9 @@ end
 
 function test_scores(model, kernel, Xtrain, ytrain, Xtest, ytest; atol::Real = 1e-4)
     
+    ClassificationOnTop.save_kernelmatrix(model, "train1.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
+    ClassificationOnTop.save_kernelmatrix(model, "train2.bin", Xtrain, ytrain, Xtrain, ytrain; kernel = kernel, T = Float64)
+    ClassificationOnTop.save_kernelmatrix(model, "train3.bin", Xtrain, ytrain, Xtrain; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "train.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "valid.bin", Xtrain, ytrain, Xtest, ytest; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "test.bin", Xtrain, ytrain, Xtest; kernel = kernel, T = Float64)
@@ -37,18 +40,24 @@ function test_scores(model, kernel, Xtrain, ytrain, Xtest, ytest; atol::Real = 1
 
     s1 = scores(model, Xtrain, ytrain, α, β; kernel = kernel)
     s2 = scores(model, Xtrain, ytrain, Xtrain, α, β; kernel = kernel)
-    s3 = scores(model, Xtrain, ytrain, Xtest, ytest, α, β; kernel = kernel)
-    s4 = scores(model, Xtrain, ytrain, Xtest, α, β; kernel = kernel)
+    s3 = scores(model, Xtrain, ytrain, Xtrain, ytrain, α, β; kernel = kernel)
+    s4 = scores(model, Xtrain, ytrain, Xtest, ytest, α, β; kernel = kernel)
+    s5 = scores(model, Xtrain, ytrain, Xtest, α, β; kernel = kernel)
 
-    s1m = scores(model, "train.bin", α, β; T = Float64)
-    s3m = scores(model, "valid.bin", α, β; T = Float64)
-    s4m = scores(model, "test.bin", α, β; T = Float64)
+    s1m = scores(model, "train1.bin", α, β; T = Float64)
+    s2m = scores(model, "train2.bin", α, β; T = Float64)
+    s3m = scores(model, "train3.bin", α, β; T = Float64)
+    s4m = scores(model, "valid.bin", α, β; T = Float64)
+    s5m = scores(model, "test.bin", α, β; T = Float64)
 
     @test maximum(abs.(s1 - s2)) <= atol
-    @test maximum(abs.(s3 - s4)) <= atol
+    @test maximum(abs.(s1 - s3)) <= atol
+    @test maximum(abs.(s4 - s5)) <= atol
     @test s1 ≈ s1m atol = atol
+    @test s2 ≈ s2m atol = atol
     @test s3 ≈ s3m atol = atol
     @test s4 ≈ s4m atol = atol
+    @test s5 ≈ s5m atol = atol
 
     rm("train.bin")
     rm("valid.bin")
