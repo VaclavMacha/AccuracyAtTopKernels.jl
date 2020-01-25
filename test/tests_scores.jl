@@ -59,7 +59,9 @@ function test_scores(model, kernel, Xtrain, ytrain, Xtest, ytest; atol::Real = 1
     @test s4 ≈ s4m atol = atol
     @test s5 ≈ s5m atol = atol
 
-    rm("train.bin")
+    rm("train1.bin")
+    rm("train2.bin")
+    rm("train3.bin")
     rm("valid.bin")
     rm("test.bin")
 end
