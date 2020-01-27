@@ -16,6 +16,10 @@ function test_scores()
         test_scores(PatMat(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
+    @testset "PatMat with $(typeof(kernel).name) kernel" for kernel in kernels 
+        test_scores(PatMatNP(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
+    end
+
     @testset "TopPushK with $(typeof(kernel).name) kernel" for kernel in kernels 
         test_scores(TopPushK(5), kernel, Xtrain, ytrain, Xtest, ytest)
     end
@@ -31,7 +35,6 @@ function test_scores(model, kernel, Xtrain, ytrain, Xtest, ytest; atol::Real = 1
     ClassificationOnTop.save_kernelmatrix(model, "train1.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "train2.bin", Xtrain, ytrain, Xtrain, ytrain; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "train3.bin", Xtrain, ytrain, Xtrain; kernel = kernel, T = Float64)
-    ClassificationOnTop.save_kernelmatrix(model, "train.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "valid.bin", Xtrain, ytrain, Xtest, ytest; kernel = kernel, T = Float64)
     ClassificationOnTop.save_kernelmatrix(model, "test.bin", Xtrain, ytrain, Xtest; kernel = kernel, T = Float64)
 

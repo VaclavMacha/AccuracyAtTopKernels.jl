@@ -67,7 +67,9 @@ export
     
     # Models
     AbstractModel,
-        PatMat,
+        AbstractPatMat,
+          PatMat,
+          PatMatNP,
         AbstractTopPushK,
             TopPushK,
             TopPush,
@@ -119,6 +121,7 @@ export
 abstract type AbstractSurrogate end
 abstract type AbstractData end
 abstract type AbstractModel end
+abstract type AbstractPatMat{AbstractSurrogate}   <: AbstractModel end
 abstract type AbstractTopPushK{AbstractSurrogate} <: AbstractModel end
 abstract type AbstractSolver end
 

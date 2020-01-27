@@ -16,6 +16,10 @@ function test_kernels()
         test_kernelmatrix(PatMat(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
+    @testset "PatMatNP with $(typeof(kernel).name) kernel" for kernel in kernels 
+        test_kernelmatrix(PatMatNP(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
+    end
+
     @testset "TopPushK with $(typeof(kernel).name) kernel" for kernel in kernels 
         test_kernelmatrix(TopPushK(5), kernel, Xtrain, ytrain, Xtest, ytest)
     end
@@ -49,7 +53,7 @@ function getmatrix(model::PatMat, Xtrain, ytrain, Xtest, kernel)
     return K
 end
 
-function getmatrix(model::AbstractTopPushK, Xtrain, ytrain, kernel)
+function getmatrix(model::Union{AbstractTopPushK, PatMatNP}, Xtrain, ytrain, kernel)
     pos = findall(ytrain)
     neg = findall(.~ytrain)
     nα  = length(pos)
@@ -60,12 +64,12 @@ function getmatrix(model::AbstractTopPushK, Xtrain, ytrain, kernel)
 end
 
 
-function getmatrix(model::AbstractTopPushK, Xtrain, ytrain, Xtest, ytest, kernel)
+function getmatrix(model::Union{AbstractTopPushK, PatMatNP}, Xtrain, ytrain, Xtest, ytest, kernel)
     return getmatrix(model, Xtrain, ytrain, Xtest, kernel)
 end
 
 
-function getmatrix(model::AbstractTopPushK, Xtrain, ytrain, Xtest, kernel)
+function getmatrix(model::Union{AbstractTopPushK, PatMatNP}, Xtrain, ytrain, Xtest, kernel)
     pos = findall(ytrain)
     neg = findall(.~ytrain)
     nα  = length(pos)

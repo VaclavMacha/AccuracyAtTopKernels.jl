@@ -15,7 +15,7 @@ function prepare(model::PatMat, X::AbstractMatrix, y::BitArray{1})
 end
 
 
-function prepare(model::AbstractTopPushK, X::AbstractMatrix, y::BitArray{1})
+function prepare(model::Union{AbstractTopPushK, PatMatNP}, X::AbstractMatrix, y::BitArray{1})
 
     ind_pos  = findall(y)
     ind_neg  = findall(.~y)

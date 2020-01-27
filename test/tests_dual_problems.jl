@@ -21,6 +21,15 @@ function test_dual_problems()
         test_dual(model, data, 30000, 200000, Descent(0.001))
     end
 
+    @testset "PatMatNP with $surrogate loss" for surrogate in [Hinge, Quadratic] 
+        l1    = surrogate(ϑ1);
+        l2    = surrogate(ϑ2);
+        model = PatMatNP(τ, C, l1, l2);
+        data  = Dual(model, X, y);
+
+        test_dual(model, data, 30000, 200000, Descent(0.001))
+    end
+
     @testset "TopPushK with $surrogate loss" for surrogate in [Hinge, Quadratic] 
         l     = surrogate(ϑ1);
         model = TopPushK(K, C, l);
@@ -72,7 +81,7 @@ function test_dual(model::AbstractModel, data::Dual{<:DTrain}, maxiter::Integer,
 end
 
 
-function isfeasible(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, solution::NamedTuple; atol::Real = 1e-5)
+function isfeasible(model::AbstractPatMat{<:Hinge}, data::Dual{<:DTrain}, solution::NamedTuple; atol::Real = 1e-5)
     α, β, δ = solution.α, solution.β, solution.δ
     @test sum(α) ≈ sum(β) atol = atol 
     @test maximum(α) <= model.l1.ϑ*model.C + atol
@@ -82,7 +91,7 @@ function isfeasible(model::PatMat{<:Hinge}, data::Dual{<:DTrain}, solution::Name
 end
 
 
-function isfeasible(model::PatMat{<:Quadratic}, data::Dual{<:DTrain}, solution::NamedTuple; atol::Real = 1e-5)
+function isfeasible(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, solution::NamedTuple; atol::Real = 1e-5)
     α, β, δ = solution.α, solution.β, solution.δ
     @test sum(α) ≈ sum(β) atol = atol
     @test minimum(α) >= - atol

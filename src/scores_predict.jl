@@ -18,7 +18,7 @@ function scores(model::PatMat, data::Dual{<:DTrain}, α::AbstractVector, β::Abs
 end
 
 
-function scores(model::AbstractTopPushK, data::Dual{<:DTrain}, α::AbstractVector, β::AbstractVector)
+function scores(model::Union{AbstractTopPushK, PatMatNP}, data::Dual{<:DTrain}, α::AbstractVector, β::AbstractVector)
     s = vec(vcat(α, β)'*data.K)
     s[data.ind_β] .*= -1
     return s[data.type.inv_perm]

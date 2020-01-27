@@ -10,7 +10,7 @@ function solve(solver::General, model::AbstractModel, data::Primal)
 end
 
 
-function solve(solver::General, model::PatMat, data::Dual{<:DTrain})
+function solve(solver::General, model::AbstractPatMat, data::Dual{<:DTrain})
     Random.seed!(solver.seed)
 
     val, tm, = @timed optimize(solver, model, data)
@@ -68,7 +68,7 @@ end
 # -------------------------------------------------------------------------------
 # PatMat
 function solve(solver::Gradient,
-               model::PatMat,
+               model::AbstractPatMat,
                data::Dual{<:DTrain},
                α0 = Float64[],
                β0 = Float64[])
@@ -137,7 +137,7 @@ end
 # -------------------------------------------------------------------------------
 # PatMat
 function solve(solver::Coordinate,
-               model::PatMat{<:S},
+               model::AbstractPatMat{<:S},
                data::Dual{<:DTrain},
                α0 = Float64[],
                β0 = Float64[]) where {S<:AbstractSurrogate}

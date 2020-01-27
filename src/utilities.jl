@@ -156,7 +156,7 @@ end
 objective(model::AbstractModel, data::Primal, solution::NamedTuple) =
     objective(model, data, solution.w, solution.t)
 
-objective(model::PatMat, data::Dual{<:DTrain}, solution::NamedTuple) =
+objective(model::AbstractPatMat, data::Dual{<:DTrain}, solution::NamedTuple) =
     objective(model, data, solution.α, solution.β, solution.δ)
 
 objective(model::AbstractTopPushK, data::Dual{<:DTrain}, solution::NamedTuple) =
@@ -169,6 +169,9 @@ objective(model::AbstractTopPushK, data::Dual{<:DTrain}, solution::NamedTuple) =
 exact_threshold(model::PatMat, data::Primal, s) =
     any(isnan.(s)) ? NaN : quantile(s, 1 - model.τ)
 
+exact_threshold(model::PatMatNP, data::Primal, s) =
+    any(isnan.(s)) ? NaN : quantile(s[data.ind_neg], 1 - model.τ)
+
 exact_threshold(model::TopPushK, data::Primal, s) =
     mean(partialsort(s[data.ind_neg], 1:model.K, rev = true))
 
@@ -180,6 +183,9 @@ exact_threshold(model::AbstractModel, data::Primal, w, T) =
 
 exact_threshold(model::PatMat, data::Dual{<:Union{DTrain, DValidation}}, s) =
     any(isnan.(s)) ? NaN : quantile(s, 1 - model.τ)
+
+exact_threshold(model::PatMatNP, data::Dual{<:Union{DTrain, DValidation}}, s) =
+    any(isnan.(s)) ? NaN : quantile(s[data.type.ind_neg], 1 - model.τ)
 
 exact_threshold(model::TopPushK, data::Dual{<:Union{DTrain, DValidation}}, s) =
     mean(partialsort(s[data.type.ind_neg], 1:model.K, rev = true))

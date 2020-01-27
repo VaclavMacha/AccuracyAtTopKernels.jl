@@ -21,6 +21,14 @@ function test_primal_problems()
         test_primal(model, data, 100000, ADAM(0.0001))
     end
 
+    @testset "PatMatNP with $surrogate loss" for surrogate in [Hinge, Quadratic] 
+        l1    = Hinge(ϑ1);
+        l2    = Hinge(ϑ2);
+        model = PatMatNP(τ, C, l1, l2);
+
+        test_primal(model, data, 100000, ADAM(0.0001))
+    end
+
     @testset "TopPushK with $surrogate loss" for surrogate in [Hinge, Quadratic] 
         l     = Hinge(ϑ1);
         model = TopPushK(K, C, l);
