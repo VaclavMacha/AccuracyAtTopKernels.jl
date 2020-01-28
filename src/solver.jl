@@ -158,7 +158,8 @@ function solve(solver::Coordinate,
         iszero(best.Δ) || apply!(model, data, best, α, β, δ, αβδ, s, βtmp)
 
         # progress and state
-        update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
+        vars = (α = copy(α), β = copy(β), δ = copy(δ[1]), k = copy(best.k), l = copy(best.l))
+        update!(state, progress, solver, model, data, iter, s; vars...)
     end
 
     t = exact_threshold(model, data, α, β)
@@ -189,7 +190,8 @@ function solve(solver::Coordinate,
         iszero(best.Δ) || apply!(model, data, best, α, β, αβ, s, αsum, βsort)
 
         # progress and state
-        update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β))
+        vars = (α = copy(α), β = copy(β), k = copy(best.k), l = copy(best.l))
+        update!(state, progress, solver, model, data, iter, s; vars...)
     end
 
     t = exact_threshold(model, data, α, β)

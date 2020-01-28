@@ -8,10 +8,11 @@ mutable struct ProgressBar{P<:ProgressMeter.Progress, T<:Real}
 end 
 
 
-struct State{S, D<:Dict, T}
+struct State{S, D<:Dict, T, A}
     seed::S
     dict::D
     time_init::T
+    coordinates::A
 end 
 
 
@@ -26,29 +27,42 @@ function ProgStateInit(solver::S,
     L    = objective(model, data, values(kwargs)..., scores)
     dict = Dict{Union{Symbol, Int64}, Any}(:initial => (values(kwargs)..., time = 0, L = L))
 
-    return State(solver.seed, dict, time()), ProgressBar(bar, L, L)
+    if S <: Coordinate
+        coordinates = Array{Int64}(undef, solver.maxiter, 2)
+    else
+        coordinates = Int64[]
+    end
+    return State(solver.seed, dict, time(), coordinates), ProgressBar(bar, L, L)
 end
 
 
 ProgStateInit(solver::General, model::AbstractModel, tm::Real; kwargs...) =
-    State(solver.seed, Dict{Union{Symbol, Int64}, Any}(:optimal => (values(kwargs)..., time = tm)), time())
+    State(solver.seed, Dict{Union{Symbol, Int64}, Any}(:optimal => (values(kwargs)..., time = tm)), time(), Int64[])
 
 
 function update!(state::State,
                  progress::ProgressBar,
-                 solver::AbstractSolver,
+                 solver::S,
                  model::AbstractModel,
                  data::AbstractData,
                  iter::Integer,
                  scores::AbstractVector;
-                 kwargs...)
+                 k::Int = 0,
+                 l::Int = 0,
+                 kwargs...) where {S<:AbstractSolver}
 
+    vars = values(kwargs)
     condition_1 = iter == solver.maxiter
     condition_2 = iter in solver.iters
     condition_3 = mod(iter, ceil(Int, solver.maxiter/10)) == 0 && solver.verbose
 
+    if S <: Coordinate
+        state.coordinates[iter, 1] = k
+        state.coordinates[iter, 2] = l
+    end
+
     if condition_1 || condition_2 || condition_3
-        L = objective(model, data, values(kwargs)..., scores)
+        L = objective(model, data, vars..., scores)
         progress.L = L
     end
 
@@ -57,9 +71,9 @@ function update!(state::State,
     end
 
     if condition_1
-        state.dict[:optimal] = (values(kwargs)..., time = time() - state.time_init, L = L)
+        state.dict[:optimal] = (vars..., time = time() - state.time_init, L = L)
     elseif condition_2
-        state.dict[iter]     = (values(kwargs)..., time = time() - state.time_init, L = L)
+        state.dict[iter]     = (vars..., time = time() - state.time_init, L = L)
     end
 end
 
