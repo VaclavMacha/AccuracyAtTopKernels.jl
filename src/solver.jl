@@ -37,10 +37,10 @@ end
 # -------------------------------------------------------------------------------
 # Primal problem - gradient solver
 # -------------------------------------------------------------------------------
-function solve(solver::Gradient, model::AbstractModel, data::Primal, w0 = Float64[])
+function solve(solver::Gradient, model::AbstractModel, data::Primal)
     Random.seed!(solver.seed)
 
-    w, s, Δ         = initialization(model, data, w0)
+    w, s, Δ         = initialization(model, data)
     t               = threshold(model, data, s)
     state, progress = ProgStateInit(solver, model, data, s; w = copy(w), t = copy(t))
 
@@ -67,15 +67,10 @@ end
 # Dual problem - gradient solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Gradient,
-               model::AbstractPatMat,
-               data::Dual{<:DTrain},
-               α0 = Float64[],
-               β0 = Float64[])
-
+function solve(solver::Gradient, model::AbstractPatMat, data::Dual{<:DTrain})
     Random.seed!(solver.seed)
 
-    α, β, δ, αβδ, s = initialization(model, data, α0, β0)
+    α, β, δ, αβδ, s = initialization(model, data)
     Δ               = zero(αβδ)
     state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
 
@@ -100,15 +95,10 @@ end
 
 
 # TopPushK
-function solve(solver::Gradient,
-               model::AbstractTopPushK,
-               data::Dual{<:DTrain},
-               α0 = Float64[],
-               β0 = Float64[])
-
+function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain})
     Random.seed!(solver.seed)
 
-    α, β, αβ, s     = initialization(model, data, α0, β0)
+    α, β, αβ, s     = initialization(model, data)
     Δ               = zero(αβ)
     state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β))
 
@@ -136,15 +126,10 @@ end
 # Dual problem - coordinate descent solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Coordinate,
-               model::AbstractPatMat{<:S},
-               data::Dual{<:DTrain},
-               α0 = Float64[],
-               β0 = Float64[]) where {S<:AbstractSurrogate}
-
+function solve(solver::Coordinate, model::AbstractPatMat{<:S}, data::Dual{<:DTrain}) where {S<:AbstractSurrogate}
     Random.seed!(solver.seed)
 
-    α, β, δ, αβδ, s = initialization(model, data, α0, β0)
+    α, β, δ, αβδ, s = initialization(model, data)
     S <: Hinge     && ( βtmp = sort(β, rev = true) )
     S <: Quadratic && ( βtmp = [sum(abs2, β)/(4*model.l2.ϑ^2)] )
  
@@ -169,15 +154,10 @@ end
 
 
 # TopPushK
-function solve(solver::Coordinate,
-               model::AbstractTopPushK,
-               data::Dual{<:DTrain},
-               α0 = Float64[],
-               β0 = Float64[])
-
+function solve(solver::Coordinate, model::AbstractTopPushK, data::Dual{<:DTrain})
     Random.seed!(solver.seed)
 
-    α, β, αβ, s     = initialization(model, data, α0, β0)
+    α, β, αβ, s     = initialization(model, data)
     αsum            = [sum(α)]
     βsort           = sort(β, rev = true)
     state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β))

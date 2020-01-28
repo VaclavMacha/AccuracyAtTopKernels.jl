@@ -71,9 +71,8 @@ end
 # -------------------------------------------------------------------------------
 # Primal problem - Gradient descent solver
 # -------------------------------------------------------------------------------
-function initialization(model::AbstractTopPushK, data::Primal, w0)
+function initialization(model::AbstractTopPushK, data::Primal)
     w = zeros(eltype(data.X), data.dim)
-    isempty(w0) || (w .= w0) 
     Δ = zero(w)
     s = scores(model, data, w)
     return w, s, Δ
@@ -167,13 +166,9 @@ end
 # -------------------------------------------------------------------------------
 # Dual problem - Graient descent solver
 # -------------------------------------------------------------------------------
-function initialization(model::AbstractTopPushK, data::Dual{<:DTrain}, α0, β0)
+function initialization(model::AbstractTopPushK, data::Dual{<:DTrain})
     αβ   = rand(eltype(data.K), data.nα + data.nβ)
     α, β = @views αβ[data.ind_α], αβ[data.ind_β]
-
-    isempty(α0) || (α .= α0)
-    isempty(β0) || (β .= β0)
-
     projection!(model, data, α, β)
 
     s  = data.K * vcat(α, β)
@@ -221,6 +216,7 @@ function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractT
     β .= βs
     return α, β 
 end
+
 
 # -------------------------------------------------------------------------------
 # Dual problem - Coordinate descent solver

@@ -68,10 +68,8 @@ end
 # -------------------------------------------------------------------------------
 # Primal problem - Gradient descent solver
 # -------------------------------------------------------------------------------
-function initialization(model::AbstractPatMat, data::Primal, w0)
+function initialization(model::AbstractPatMat, data::Primal)
     w = zeros(eltype(data.X), data.dim)
-
-    isempty(w0) || (w .= w0) 
     s = scores(model, data, w)
     Δ = zero(w)
     return w, s, Δ
@@ -168,29 +166,18 @@ end
 # -------------------------------------------------------------------------------
 # Dual problem - Graient descent solver
 # -------------------------------------------------------------------------------
-function initialization(model::AbstractPatMat, data::Dual{<:DTrain}, α0, β0)
+function initialization(model::AbstractPatMat{S}, data::Dual{<:DTrain}) where {S<:AbstractSurrogate}
     αβδ     = rand(eltype(data.K), data.nα + data.nβ + 1)
     α, β, δ = @views αβδ[data.ind_α], αβδ[data.ind_β], αβδ[[end]]
-
-    isempty(α0) || (α .= α0)
-    isempty(β0) || (β .= β0)
-    δ .= init_δ(model, data, α, β)
+    if S <: Hinge
+        δ .= maximum(β)/model.l1.ϑ
+    else
+        δ .= sqrt(sum(abs2, β)/(4*data.nβ*model.τ*model.l2.ϑ^2))
+    end
     projection!(model, data, α, β, δ)
 
     s = data.K * vcat(α, β)
     return α, β, δ, αβδ, s
-end
-
-
-function init_δ(model::AbstractPatMat{<:Hinge}, data::Dual{<:DTrain}, α0, β0)
-    maximum(β0)/model.l1.ϑ
-end
-
-
-function init_δ(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, α0, β0)
-    δ0 = sqrt(sum(abs2, β0)/(4*data.nβ*model.τ*model.l2.ϑ^2))
-    iszero(δ0) && (δ0 += 1e-8)
-    return δ0
 end
 
 
@@ -215,6 +202,7 @@ function projection!(model::AbstractPatMat{<:Hinge}, data::Dual{<:DTrain}, α, �
      δ .= δs
      return α, β, δ 
 end
+
 
 
 # Truncated quadratic loss
@@ -247,11 +235,7 @@ end
 # Dual problem - Coordinate descent solver
 # -------------------------------------------------------------------------------
 function select_k(model::AbstractPatMat, data::Dual{<:DTrain}, α, β, δ)
-    if rand() <= 0.9
-        return data.nα + findmax(β)[2]
-    else
-        return rand(1:(data.nα + data.nβ))
-    end
+    rand(1:(data.nα + data.nβ))
 end
 
 
