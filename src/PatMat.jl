@@ -172,7 +172,7 @@ function initialization(model::AbstractPatMat{S}, data::Dual{<:DTrain}) where {S
     if S <: Hinge
         δ .= maximum(β)/model.l1.ϑ
     else
-        δ .= sqrt(sum(abs2, β)/(4*data.nβ*model.τ*model.l2.ϑ^2))
+        δ .= sqrt(max(sum(abs2, β)/(4*data.nβ*model.τ*model.l2.ϑ^2), 0))
     end
     projection!(model, data, α, β, δ)
 
@@ -375,7 +375,7 @@ function rule_αβ!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, be
     a    = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ1^2) - 1/(2*δ[1]*ϑ2^2) 
     b    = - s[k] - s[l] + 1/ϑ1 - αk/(2*C*ϑ1^2) + 1/ϑ2 - βl/(2*δ[1]*ϑ2^2)
     Δ    = solution(a, b, max(-αk, -βl), Inf)
-    δnew = sqrt(δ[1]^2 + (Δ^2 + 2*Δ*βl)/(4*ϑ2^2*n*τ))
+    δnew = sqrt(max(δ[1]^2 + (Δ^2 + 2*Δ*βl)/(4*ϑ2^2*n*τ), 0))
 
     a +=    (1/δ[1] - 1/δnew)/(2*ϑ2^2)
     b += βl*(1/δ[1] - 1/δnew)/(2*ϑ2^2)
@@ -394,7 +394,7 @@ function rule_ββ!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, be
     a    = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] - 1/(δ[1]*ϑ2^2)
     b    = - s[k] + s[l] - (βk - βl)/(2*δ[1]*ϑ2^2)
     Δ    = solution(a, b, -βk, βl)
-    δnew = sqrt(δ[1]^2 + (Δ^2 + Δ*(βk - βl))/(2*ϑ2^2*n*τ))
+    δnew = sqrt(max(δ[1]^2 + (Δ^2 + Δ*(βk - βl))/(2*ϑ2^2*n*τ), 0))
 
     a += (1/δ[1] - 1/δnew)/(ϑ2^2)
     b += (1/δ[1] - 1/δnew)*(βk - βl)/(2*ϑ2^2)
