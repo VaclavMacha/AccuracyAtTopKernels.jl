@@ -35,7 +35,7 @@ This package provides following methods:
 
 In this example we use our package and StatsPlots to visualize the solution.
 
-```@example README
+```julia
 using ClassificationOnTop, StatsPlots, Random
 
 Random.seed!(1234)
@@ -61,7 +61,7 @@ nothing #hide
 
  As an example, we use the following linearly nonseparable data
 
-```@example README
+```julia
 plt1 = scatter(X[y .== 0, 1], X[y .== 0, 2], label = "positives")
 scatter!(X[y .== 1, 1], X[y .== 1, 2], label = "negatives", dpi = 300)
 savefig(plt1, "data.png")
@@ -71,7 +71,7 @@ savefig(plt1, "data.png")
 
 The following example shows, how to compute the primal and dual problem for ToppushK method. To solve, we use our gradient descent based solver for the primal problem and our coordinate descent based solver for the dual problem.
 
-```@example README
+```julia
 model  = TopPushK(10, 1, Quadratic(1))
 data_p = Primal(X, y);
 data_d = Dual(model, X, y; kernel = GaussianKernel());
@@ -83,7 +83,7 @@ nothing #hide
 
 For simple visual verification that methods works, we use density estimates of classification scores.
 
-```@example README
+```julia
 scores_p = scores(model, data_p, solution_p.w);
 scores_d = scores(model, data_d, solution_d.α, solution_d.β);
 
