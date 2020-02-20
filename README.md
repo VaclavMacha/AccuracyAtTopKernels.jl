@@ -1,7 +1,3 @@
-```@meta
-EditURL = "<unknown>/scripts/README.jl"
-```
-
 ##  ClassificationOnTop.jl
 This repository is a complementary material to our paper ["General Framework for Nonlinear Binary Classification on Top Samples"]().
 
@@ -9,7 +5,7 @@ This repository is a complementary material to our paper ["General Framework for
 
 This package can be installed using pkg REPL as follows
 ```julia
-(v1.2) pkg> add https://github.com/VaclavMacha/ClassificationOnTop_new.jl
+] pkg> add https://github.com/VaclavMacha/ClassificationOnTop_new.jl
 ```
 
 # Usage
@@ -27,13 +23,13 @@ This package provides following methods:
     1. primal
     2. dual
 * Solvers:
-    1. `General`
-    2. `Gradient`
-    3. `Coordinate`
+    1. `General` ([ECOS](https://github.com/JuliaOpt/ECOS.jl) solver)
+    2. `Gradient` (our)
+    3. `Coordinate` (our)
 
 ## Simple example
 
-In this example we use our package and StatsPlots to visualize the solution.
+The following example is provided to demonstrate how to use the package. Firstly, we generate some random data
 
 ```julia
 using ClassificationOnTop, StatsPlots, Random
@@ -59,7 +55,7 @@ y = 1:(nneg+npos) .> nneg;
 nothing #hide
 ```
 
- As an example, we use the following linearly nonseparable data
+In this case, we use linearly inseparable data, as shown in the figure below
 
 ```julia
 plt1 = scatter(X[y .== 0, 1], X[y .== 0, 2], label = "positives")
@@ -69,19 +65,26 @@ savefig(plt1, "data.png")
 
 ![Simple example](scripts/data.png)
 
-The following example shows, how to compute the primal and dual problem for ToppushK method. To solve, we use our gradient descent based solver for the primal problem and our coordinate descent based solver for the dual problem.
+Then we have to define model, problems and solvers. In this case, we use `TopPushK` model, `Primal` and `Dual` problem and `Gradient` (for the primal problem) and `Coordinate` (for the dual problem) solver.
 
 ```julia
 model  = TopPushK(10, 1, Quadratic(1))
+
 data_p = Primal(X, y);
 data_d = Dual(model, X, y; kernel = GaussianKernel());
 
-solution_p = solve(Gradient(maxiter = 1000, optimizer = Descent(0.0001)), model, data_p);
-solution_d = solve(Coordinate(maxiter = 1000), model, data_d);
-nothing #hide
+solver_p = Gradient(maxiter = 1000, optimizer = Descent(0.0001))
+solver_d = Coordinate(maxiter = 1000)
 ```
 
-For simple visual verification that methods works, we use density estimates of classification scores.
+Finally, we can call `solve` function to solve our model
+
+```julia
+solution_p = solve(solver_p, model, data_p);
+solution_d = solve(solver_d, model, data_d);
+```
+
+For simple visual verification, we use density estimates of classification scores.
 
 ```julia
 scores_p = scores(model, data_p, solution_p.w);
