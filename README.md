@@ -1,11 +1,11 @@
-##  ClassificationOnTop.jl
+##  ClassificationOnTop_nonlinear.jl
 This repository is a complementary material to our paper ["General Framework for Nonlinear Binary Classification on Top Samples"]().
 
 # Installation
 
 This package can be installed using pkg REPL as follows
 ```julia
-] pkg> add https://github.com/VaclavMacha/ClassificationOnTop_new.jl
+] pkg> add https://github.com/VaclavMacha/ClassificationOnTop_nonlinear.jl
 ```
 
 # Usage
