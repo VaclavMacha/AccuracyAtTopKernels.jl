@@ -1,5 +1,5 @@
 ##  ClassificationOnTop_nonlinear.jl
-This repository is a complementary material to our paper ["General Framework for Nonlinear Binary Classification on Top Samples"]().
+This repository is a complementary material to our paper [Nonlinear classifiers for ranking problems based on kernelized SVM](https://arxiv.org/abs/2002.11436?fbclid=IwAR08_G_fSYTNkdfOt191rZAq2qMwY22z_iReUGJ2CEDXz7L3m_a4ZSxvpiY).
 
 # Installation
 
