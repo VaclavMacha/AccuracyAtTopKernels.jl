@@ -193,7 +193,7 @@ function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractT
     αs, βs = projection(α, β, model.l.ϑ*model.C, K)
     α .= αs
     β .= βs
-    return α, β 
+    return α, β
 end
 
 
@@ -214,9 +214,28 @@ function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractT
     αs, βs = projection(α, β, K)
     α .= αs
     β .= βs
-    return α, β 
+    return α, β
 end
 
+function threshold(model::TopPushK, data::Dual, s)
+   return mean(partialsort(.- s[data.ind_β], 1:model.K, rev = true))
+end
+
+
+function threshold(model::TopPush, data::Dual, s)
+   return maximum(.- s[data.ind_β])
+end
+
+
+function primal_objective(model::AbstractTopPushK, data::Dual{<:DTrain}, α, β, s = data.K * vcat(α, β))
+    K = isa(model, TopPush) ? 1 : model.K
+
+    t = threshold(model, data, s)
+    z = max.(.- s[data.ind_β] .- t, 0)
+    y = t + sum(z)/K  .- s[data.ind_α]
+    w_norm = s'*vcat(α, β)/2
+    return w_norm + model.C * sum(model.l.value.(y))
+end
 
 # -------------------------------------------------------------------------------
 # Dual problem - Coordinate descent solver
@@ -233,7 +252,7 @@ end
 
 function apply!(model::TopPushK, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
     βsorted!(data, best, β, βsort)
-    if best.k <= data.nα && best.l > data.nα 
+    if best.k <= data.nα && best.l > data.nα
         αsum .+= best.Δ
     end
     αβ[best.k] = best.vars[1]
@@ -255,11 +274,11 @@ function rule_αα!(model::AbstractTopPushK{<:Hinge}, data::Dual{<:DTrain}, best
     αk, αl = α[k], α[l]
     C, ϑ   = model.C, model.l.ϑ
 
-    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] 
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l]
     b = - s[k] + s[l]
     Δ = solution(a, b, max(-αk, αl - ϑ*C), min(ϑ*C - αk, αl))
 
-    vars = (αk = αk + Δ, αl = αl - Δ) 
+    vars = (αk = αk + Δ, αl = αl - Δ)
     L    = loss(model, data, a, b, Δ)
     update!(best, k, l, Δ, L, vars)
 end
@@ -271,7 +290,7 @@ function rule_αβ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
     C, ϑ   = model.C, model.l.ϑ
     M <: TopPush ? K = 1 : K = model.K
 
-    a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] 
+    a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l]
     b = - s[k] - s[l] + 1/ϑ
 
     if K == 1
@@ -293,7 +312,7 @@ function rule_ββ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
     C, ϑ   = model.C, model.l.ϑ
     M <: TopPush ? K = 1 : K = model.K
 
-    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] 
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l]
     b = - s[k] + s[l]
 
     if K == 1
@@ -301,7 +320,7 @@ function rule_ββ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
     else
         Δ = solution(a, b, max(-βk, βl - αsum[1]/K), min(αsum[1]/K - βk, βl))
     end
- 
+
     vars = (βk = βk + Δ, βl = βl - Δ)
     L    = loss(model, data, a, b, Δ)
     update!(best, k, l, Δ, L, vars)
@@ -314,11 +333,11 @@ function rule_αα!(model::AbstractTopPushK{<:Quadratic}, data::Dual{<:DTrain}, 
     αk, αl = α[k], α[l]
     C, ϑ   = model.C, model.l.ϑ
 
-    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] - 1/(C*ϑ^2) 
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] - 1/(C*ϑ^2)
     b = - s[k] + s[l] - (αk - αl)/(2*C*ϑ^2)
     Δ = solution(a, b, - αk, αl)
 
-    vars = (αk = αk + Δ, αl = αl - Δ) 
+    vars = (αk = αk + Δ, αl = αl - Δ)
     L    = loss(model, data, a, b, Δ)
     update!(best, k, l, Δ, L, vars)
 end
@@ -330,7 +349,7 @@ function rule_αβ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
     C, ϑ   = model.C, model.l.ϑ
     M <: TopPush ? K = 1 : K = model.K
 
-    a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ^2) 
+    a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ^2)
     b = - s[k] - s[l] + 1/ϑ - αk/(2*C*ϑ^2)
 
     if K == 1
@@ -352,7 +371,7 @@ function rule_ββ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
     C, ϑ   = data.n, model.C, model.l.ϑ
     M <: TopPush ? K = 1 : K = model.K
 
-    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] 
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l]
     b = - s[k] + s[l]
 
     if K == 1
@@ -360,7 +379,7 @@ function rule_ββ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
     else
         Δ = solution(a, b, max(-βk, βl - αsum[1]/K), min(αsum[1]/K - βk, βl))
     end
- 
+
     vars = (βk = βk + Δ, βl = βl - Δ)
     L    = loss(model, data, a, b, Δ)
     update!(best, k, l, Δ, L, vars)

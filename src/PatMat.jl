@@ -42,7 +42,7 @@ function optimize(solver::General, model::M, data::Primal) where {M <: AbstractP
     w    = Convex.Variable(data.dim)
     t    = Convex.Variable()
     y    = Convex.Variable(data.npos)
-    
+
     if M <: PatMat
         X = data.X
         z = Convex.Variable(data.n)
@@ -124,7 +124,7 @@ function optimize(solver::General, model::AbstractPatMat{<:Hinge}, data::Dual{<:
     δ = Convex.Variable()
     K = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), K)/2 + Convex.sum(α)/model.l1.ϑ + 
+    objective   = - Convex.quadform(vcat(α, β), K)/2 + Convex.sum(α)/model.l1.ϑ +
                     Convex.sum(β)/model.l2.ϑ - δ*data.nβ*model.τ
     constraints = [Convex.sum(α) == Convex.sum(β),
                    α <= model.l1.ϑ*model.C,
@@ -200,7 +200,7 @@ function projection!(model::AbstractPatMat{<:Hinge}, data::Dual{<:DTrain}, α, �
      α .= αs
      β .= βs
      δ .= δs
-     return α, β, δ 
+     return α, β, δ
 end
 
 
@@ -227,7 +227,24 @@ function projection!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, �
      α .= αs
      β .= βs
      δ .= δs
-     return α, β, δ 
+     return α, β, δ
+end
+
+
+function threshold(model::PatMat, data::Dual{<:DTrain}, s)
+   Roots.find_zero(t -> sum(model.l2.value.(.- s[data.type.inv_perm] .- t)) - data.n*model.τ, (-Inf, Inf))
+end
+
+
+function threshold(model::PatMatNP, data::Dual{<:DTrain}, s)
+   Roots.find_zero(t -> sum(model.l2.value.(.- s[data.ind_β] .- t)) - data.nβ*model.τ, (-Inf, Inf))
+end
+
+
+function primal_objective(model::AbstractPatMat, data::Dual{<:DTrain}, α, β, δ, s)
+    t = threshold(model, data, s)
+
+    return s'*vcat(α, β)/2 + model.C * sum(model.l1.value.(t .- s[data.ind_α]))
 end
 
 
@@ -263,7 +280,7 @@ function rule_αα!(model::AbstractPatMat{<:Hinge}, data::Dual{<:DTrain}, best::
     b = - s[k] + s[l]
     Δ = solution(a, b, max(-αk, αl - ϑ1*C), min(ϑ1*C - αk, αl))
 
-    vars = (αk = αk + Δ, αl = αl - Δ, δ = δ[1]) 
+    vars = (αk = αk + Δ, αl = αl - Δ, δ = δ[1])
     L    = loss(model, data, a, b, vars.δ, Δ)
     update!(best, k, l, Δ, L, vars)
 end
@@ -322,7 +339,7 @@ function rule_ββ!(model::AbstractPatMat{<:Hinge}, data::Dual{<:DTrain}, best::
     end
 
     # solution 3
-    Δ = solution(a, b + n*τ/ϑ2, -βk, βl) 
+    Δ = solution(a, b + n*τ/ϑ2, -βk, βl)
     if βl - Δ >= max(βk + Δ, βmax)
         vars = (βk = βk + Δ, βl = βl - Δ, δ = (βl - Δ)/ϑ2)
         L    = loss(model, data, a, b + n*τ/ϑ2, vars.δ, Δ)
@@ -341,7 +358,7 @@ function apply!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, best::
     if best.k > data.nα || best.l > data.nα
         if best.k <= data.nα && best.l > data.nα
             β2sum .+= best.Δ*(best.Δ + 2*β[best.l - data.nα])/(4*model.l2.ϑ^2)
-        else 
+        else
             β2sum .+= best.Δ*(2*best.Δ + 2*(β[best.k - data.nα] - β[best.l - data.nα]))/(4*model.l2.ϑ^2)
         end
     end
@@ -357,11 +374,11 @@ function rule_αα!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, be
     αk, αl   = α[k], α[l]
     n, C, ϑ1 = data.nβ, model.C, model.l1.ϑ
 
-    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] - 1/(C*ϑ1^2) 
+    a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l] - 1/(C*ϑ1^2)
     b = - s[k] + s[l] - (αk - αl)/(2*C*ϑ1^2)
     Δ = solution(a, b, - αk, αl)
 
-    vars = (αk = αk + Δ, αl = αl - Δ, δ = δ[1]) 
+    vars = (αk = αk + Δ, αl = αl - Δ, δ = δ[1])
     L    = loss(model, data, a, b, vars.δ, Δ, β2sum)
     update!(best, k, l, Δ, L, vars)
 end
@@ -372,7 +389,7 @@ function rule_αβ!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, be
     αk, βl = α[k], β[l - data.nα]
     n, τ, C, ϑ1, ϑ2 = data.nβ, model.τ, model.C, model.l1.ϑ, model.l2.ϑ
 
-    a    = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ1^2) - 1/(2*δ[1]*ϑ2^2) 
+    a    = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ1^2) - 1/(2*δ[1]*ϑ2^2)
     b    = - s[k] - s[l] + 1/ϑ1 - αk/(2*C*ϑ1^2) + 1/ϑ2 - βl/(2*δ[1]*ϑ2^2)
     Δ    = solution(a, b, max(-αk, -βl), Inf)
     δnew = sqrt(max(δ[1]^2 + (Δ^2 + 2*Δ*βl)/(4*ϑ2^2*n*τ), 0))
@@ -398,7 +415,7 @@ function rule_ββ!(model::AbstractPatMat{<:Quadratic}, data::Dual{<:DTrain}, be
 
     a += (1/δ[1] - 1/δnew)/(ϑ2^2)
     b += (1/δ[1] - 1/δnew)*(βk - βl)/(2*ϑ2^2)
- 
+
     vars = (βk = βk + Δ, βl = βl - Δ, δ = δnew)
     L    = loss(model, data, a, b, vars.δ, Δ, β2sum)
     update!(best, k, l, Δ, L, vars)

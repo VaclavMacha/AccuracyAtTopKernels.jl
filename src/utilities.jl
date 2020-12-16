@@ -5,7 +5,8 @@ mutable struct ProgressBar{P<:ProgressMeter.Progress, T<:Real}
     bar::P
     L0::T
     L::T
-end 
+    L_primal::T
+end
 
 
 struct State{S, D<:Dict, T, A}
@@ -13,7 +14,7 @@ struct State{S, D<:Dict, T, A}
     dict::D
     time_init::T
     coordinates::A
-end 
+end
 
 
 function ProgStateInit(solver::S,
@@ -23,16 +24,22 @@ function ProgStateInit(solver::S,
                        kwargs...) where {S<:AbstractSolver, M<:AbstractModel, D<:AbstractData}
 
     msg  = "$(M.name) $(D.name) loss - $(S.name) solver: "
-    bar  = ProgressMeter.Progress(solver.maxiter, 1, msg)
+    bar  = ProgressMeter.Progress(solver.maxiter, 0.1, msg)
     L    = objective(model, data, values(kwargs)..., scores)
-    dict = Dict{Union{Symbol, Int64}, Any}(:initial => (values(kwargs)..., time = 0, L = L))
+    vals = (values(kwargs)..., time = 0, L = L)
+    L_primal = Inf
+    if isa(data, Dual)
+        L_primal = primal_objective(model, data, values(kwargs)..., scores)
+        vals = (; vals..., L_primal = L_primal)
+    end
+    dict = Dict{Union{Symbol, Int64}, Any}(:initial => vals)
 
     if S <: Coordinate
         coordinates = Array{Int64}(undef, solver.maxiter, 2)
     else
         coordinates = Int64[]
     end
-    return State(solver.seed, dict, time(), coordinates), ProgressBar(bar, L, L)
+    return State(solver.seed, dict, time(), coordinates), ProgressBar(bar, L, L, L_primal)
 end
 
 
@@ -49,6 +56,7 @@ function update!(state::State,
                  scores::AbstractVector;
                  k::Int = 0,
                  l::Int = 0,
+                 gap::Real = Inf,
                  kwargs...) where {S<:AbstractSolver}
 
     vars = values(kwargs)
@@ -64,19 +72,32 @@ function update!(state::State,
     if condition_1 || condition_2 || condition_3
         L = objective(model, data, vars..., scores)
         progress.L = L
+        if isa(data, Dual)
+            L_primal = primal_objective(model, data, vars..., scores)
+            progress.L_primal = L_primal
+        end
     end
 
     if solver.verbose
-        ProgressMeter.next!(progress.bar; showvalues = [(:L0, progress.L0), (:L, progress.L)])
+        vals = [(:L0, progress.L0), (:L, progress.L)]
+        if isa(data, Dual)
+            push!(vals, (:L_primal, progress.L_primal))
+            push!(vals, (:gap, dualitygap(progress)))
+        end
+        ProgressMeter.next!(progress.bar; showvalues = vals)
     end
 
-    if condition_1
-        state.dict[:optimal] = (vars..., time = time() - state.time_init, L = L)
-    elseif condition_2
-        state.dict[iter]     = (vars..., time = time() - state.time_init, L = L)
+    if condition_1 || condition_2
+        key = condition_1 ? :optimal : iter
+        if isa(data, Dual)
+            state.dict[key] = (vars..., time = time() - state.time_init, L = L, L_primal = L_primal)
+        else
+            state.dict[key] = (vars..., time = time() - state.time_init, L = L)
+        end
     end
 end
 
+dualitygap(progress::ProgressBar) = progress.L_primal - progress.L
 
 # -------------------------------------------------------------------------------
 # Gradient descent utilities
@@ -132,7 +153,7 @@ end
 function scores!(data::Dual{<:DTrain}, best::BestUpdate, s)
     if best.k <= data.nα && best.l > data.nα
         s .+= best.Δ*(data.K[:, best.k] + data.K[:, best.l])
-    else 
+    else
         s .+= best.Δ*(data.K[:, best.k] - data.K[:, best.l])
     end
 end
