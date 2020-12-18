@@ -66,17 +66,19 @@ end
     ind_β::V = nα .+ (1:nβ)
 end
 
-Dual(type::DualType, io::IO, K::AbstractMatrix, nα::Int, nβ::Int, n::Int) = 
+Dual(type::DualType, io::IO, K::AbstractMatrix, nα::Int, nβ::Int, n::Int) =
     Dual(type = type, io = io, K = K, nα = nα, nβ = nβ, n = n)
 
 
 # train data
-function Dual(model::AbstractModel,
-              Xtrain::AbstractMatrix,
-              ytrain::BitArray{1};
-              kwargs...)
-    
-    K, n, nα, nβ, ind_pos, ind_neg, inv_perm = kernelmatrix(model, Xtrain, ytrain; kwargs...)
+function Dual(
+    M::Type{<:AbstractModel},
+    Xtrain::AbstractMatrix,
+    ytrain::BitArray{1};
+    kwargs...
+)
+
+    K, n, nα, nβ, ind_pos, ind_neg, inv_perm = kernelmatrix(M, Xtrain, ytrain; kwargs...)
 
     type = DTrain(ind_pos, ind_neg, inv_perm)
     io   = IOBuffer()
@@ -87,14 +89,16 @@ end
 
 
 # validation data
-function Dual(model::AbstractModel,
-              Xtrain::AbstractMatrix,
-              ytrain::BitArray{1},
-              Xvalid::AbstractMatrix,
-              yvalid::BitArray{1};
-              kwargs...)
-    
-    K, n, nα, nβ, ind_pos, ind_neg, inv_perm = kernelmatrix(model, Xtrain, ytrain, Xvalid, yvalid; kwargs...)
+function Dual(
+    M::Type{<:AbstractModel},
+    Xtrain::AbstractMatrix,
+    ytrain::BitArray{1},
+    Xvalid::AbstractMatrix,
+    yvalid::BitArray{1};
+    kwargs...
+)
+
+    K, n, nα, nβ, ind_pos, ind_neg, inv_perm = kernelmatrix(M, Xtrain, ytrain, Xvalid, yvalid; kwargs...)
 
     type = DValidation(ind_pos, ind_neg, inv_perm)
     io   = IOBuffer()
@@ -105,14 +109,16 @@ end
 
 
 # test data
-function Dual(model::AbstractModel,
-              Xtrain::AbstractMatrix,
-              ytrain::BitArray{1},
-              Xtest::AbstractMatrix;
-              kwargs...)
-    
-    K, n, nα, nβ = kernelmatrix(model, Xtrain, ytrain, Xtest; kwargs...)
- 
+function Dual(
+    M::Type{<:AbstractModel},
+    Xtrain::AbstractMatrix,
+    ytrain::BitArray{1},
+    Xtest::AbstractMatrix;
+    kwargs...
+)
+
+    K, n, nα, nβ = kernelmatrix(M, Xtrain, ytrain, Xtest; kwargs...)
+
     type = DTest(n)
     io   = IOBuffer()
     close(io)
@@ -121,7 +127,7 @@ function Dual(model::AbstractModel,
 end
 
 
-# Dual dataset load function 
+# Dual dataset load function
 function Dual(file::AbstractString; kwargs...)
 
     type_int, io, out = load_kernelmatrix(file; kwargs...)
@@ -129,7 +135,7 @@ function Dual(file::AbstractString; kwargs...)
     if type_int == 0
         K, n, nα, nβ, ind_pos, ind_neg, inv_perm = out
         type = DTrain(ind_pos, ind_neg, inv_perm)
-   
+
     elseif type_int == 1
         K, n, nα, nβ, ind_pos, ind_neg, inv_perm = out
         type = DValidation(ind_pos, ind_neg, inv_perm)
