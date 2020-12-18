@@ -207,8 +207,10 @@ exact_threshold(model::PatMat, data::Primal, s) =
 exact_threshold(model::PatMatNP, data::Primal, s) =
     any(isnan.(s)) ? NaN : quantile(s[data.ind_neg], 1 - model.τ)
 
-exact_threshold(model::TopPushK, data::Primal, s) =
-    mean(partialsort(s[data.ind_neg], 1:model.K, rev = true))
+function exact_threshold(model::AbstractTopPushK, data::Primal, s)
+    K = getK(model, data)
+    mean(partialsort(s[data.ind_neg], 1:K, rev = true))
+end
 
 exact_threshold(model::TopPush, data::Primal, s) =
     maximum(s[data.ind_neg])
@@ -222,8 +224,10 @@ exact_threshold(model::PatMat, data::Dual{<:Union{DTrain, DValidation}}, s) =
 exact_threshold(model::PatMatNP, data::Dual{<:Union{DTrain, DValidation}}, s) =
     any(isnan.(s)) ? NaN : quantile(s[data.type.ind_neg], 1 - model.τ)
 
-exact_threshold(model::TopPushK, data::Dual{<:Union{DTrain, DValidation}}, s) =
-    mean(partialsort(s[data.type.ind_neg], 1:model.K, rev = true))
+function exact_threshold(model::AbstractTopPushK, data::Dual{<:Union{DTrain, DValidation}}, s)
+    K = getK(model, data)
+    mean(partialsort(s[data.type.ind_neg], 1:K, rev = true))
+end
 
 exact_threshold(model::TopPush, data::Dual{<:Union{DTrain, DValidation}}, s) =
     maximum(s[data.type.ind_neg])

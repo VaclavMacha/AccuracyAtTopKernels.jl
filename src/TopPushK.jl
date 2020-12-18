@@ -23,6 +23,25 @@ end
 show(io::IO, model::TopPush) =
     print(io, "TopPush($(model.C), $(model.l))")
 
+@with_kw_noshow struct τFPL{S<:AbstractSurrogate, R<:Real, T<:Real} <: AbstractTopPushK{S}
+    τ::R
+    C::T = 1
+    l::S = Hinge(ϑ = 1.0)
+
+    @assert 0 < τ < 1  "The vaule of `τ` must lay in the interval (0,1)."
+end
+
+
+τFPL(τ::Real) = τFPL(τ = τ)
+
+
+show(io::IO, model::τFPL) =
+    print(io, "τFPL($(model.τ), $(model.C), $(model.l))")
+
+getK(model::TopPushK, data) = model.K
+getK(model::TopPush, data) = 1
+getK(model::τFPL, data::Primal) = max(1, round(Int, model.τ * data.nneg))
+getK(model::τFPL, data::Dual) = max(1, round(Int, model.τ * data.nβ))
 
 # -------------------------------------------------------------------------------
 # Primal problem - General solver
@@ -36,16 +55,17 @@ function optimize(solver::General, model::TopPushK, data::Primal)
     t = Convex.Variable()
     y = Convex.Variable(data.npos)
     z = Convex.Variable(data.nneg)
+    K = getK(model, data)
 
     objective = Convex.sumsquares(w)/2 + model.C * Convex.sum(model.l.value_exact.(y))
-    constraints = [y == t + Convex.sum(z)/model.K - Xpos*w,
+    constraints = [y == t + Convex.sum(z)/K - Xpos*w,
                    z >= Xneg*w - t,
                    z >= 0]
 
     problem = Convex.minimize(objective, constraints)
     Convex.solve!(problem, solver.solver)
 
-    return vec(w.value), t.value + sum(z.value)/model.K
+    return vec(w.value), t.value + sum(z.value)/K
 end
 
 
@@ -84,8 +104,9 @@ function objective(model::AbstractTopPushK, data::Primal, w, t, s = scores(model
 end
 
 
-function threshold(model::TopPushK, data::Primal, s)
-   return mean(partialsort(s[data.ind_neg], 1:model.K, rev = true))
+function threshold(model::AbstractTopPushK, data::Primal, s)
+    K = getK(model, data)
+   return mean(partialsort(s[data.ind_neg], 1:K, rev = true))
 end
 
 
@@ -94,8 +115,9 @@ function threshold(model::TopPush, data::Primal, s)
 end
 
 
-function gradient!(model::TopPushK, data::Primal, w, s, Δ)
-    ind_t = partialsortperm(s[data.ind_neg], 1:model.K, rev = true)
+function gradient!(model::AbstractTopPushK, data::Primal, w, s, Δ)
+    K = getK(model, data)
+    ind_t = partialsortperm(s[data.ind_neg], 1:K, rev = true)
     t     = mean(s[data.ind_neg[ind_t]])
 
     ∇l = model.l.gradient.(t .- s[data.ind_pos])
@@ -125,15 +147,18 @@ function optimize(solver::General, model::M, data::Dual{<:DTrain}; ε::Real = 1e
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
-    K = data.K + ε .* I
+    K = getK(model, data)
+    KK = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), K)/2 + Convex.sum(α)/model.l.ϑ
+    objective   = - Convex.quadform(vcat(α, β), KK)/2 + Convex.sum(α)/model.l.ϑ
     constraints = [Convex.sum(α) == Convex.sum(β),
                    α <= model.l.ϑ*model.C,
                    α >= 0,
                    β >= 0]
 
-    M <: TopPushK && push!(constraints, β <= Convex.sum(α)/model.K)
+    if M <: TopPushK || M <: τFPL
+        push!(constraints, β <= Convex.sum(α)/K)
+    end
 
     problem = Convex.maximize(objective, constraints)
     Convex.solve!(problem, solver.solver)
@@ -146,15 +171,18 @@ function optimize(solver::General, model::M, data::Dual{<:DTrain}; ε::Real = 1e
 
     α = Convex.Variable(data.nα)
     β = Convex.Variable(data.nβ)
-    K = data.K + ε .* I
+    K = getK(model, data)
+    KK = data.K + ε .* I
 
-    objective   = - Convex.quadform(vcat(α, β), K)/2 +
+    objective   = - Convex.quadform(vcat(α, β), KK)/2 +
                     Convex.sum(α)/model.l.ϑ - Convex.sumsquares(α)/(4*model.C*model.l.ϑ^2)
     constraints = [Convex.sum(α) == Convex.sum(β),
                    α >= 0,
                    β >= 0]
 
-    M <: TopPushK && push!(constraints, β <= Convex.sum(α)/model.K)
+    if M <: TopPushK || M <: τFPL
+        push!(constraints, β <= Convex.sum(α)/K)
+    end
 
     problem = Convex.maximize(objective, constraints)
     Convex.solve!(problem, solver.solver)
@@ -189,7 +217,7 @@ end
 
 
 function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractTopPushK{<:Hinge}}
-    K = M <: TopPushK ? model.K : 1
+    K = getK(model, data)
     αs, βs = projection(α, β, model.l.ϑ*model.C, K)
     α .= αs
     β .= βs
@@ -210,7 +238,7 @@ end
 
 
 function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractTopPushK{<:Quadratic}}
-    K = M <: TopPushK ? model.K : 1
+    K = getK(model, data)
     αs, βs = projection(α, β, K)
     α .= αs
     β .= βs
@@ -218,7 +246,8 @@ function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractT
 end
 
 function threshold(model::TopPushK, data::Dual, s)
-   return mean(partialsort(.- s[data.ind_β], 1:model.K, rev = true))
+    K = getK(model, data)
+   return mean(partialsort(.- s[data.ind_β], 1:K, rev = true))
 end
 
 
@@ -228,8 +257,8 @@ end
 
 
 function primal_objective(model::AbstractTopPushK, data::Dual{<:DTrain}, α, β, s = data.K * vcat(α, β))
-    K = isa(model, TopPush) ? 1 : model.K
 
+    K = getK(model, data)
     t = threshold(model, data, s)
     z = max.(.- s[data.ind_β] .- t, 0)
     y = t + sum(z)/K  .- s[data.ind_α]
@@ -288,7 +317,7 @@ function rule_αβ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
 
     αk, βl = α[k], β[l - data.nα]
     C, ϑ   = model.C, model.l.ϑ
-    M <: TopPush ? K = 1 : K = model.K
+    K = getK(model, data)
 
     a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l]
     b = - s[k] - s[l] + 1/ϑ
@@ -310,7 +339,7 @@ function rule_ββ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
 
     βk, βl = β[k - data.nα], β[l - data.nα]
     C, ϑ   = model.C, model.l.ϑ
-    M <: TopPush ? K = 1 : K = model.K
+    K = getK(model, data)
 
     a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l]
     b = - s[k] + s[l]
@@ -347,7 +376,7 @@ function rule_αβ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
 
     αk, βl = α[k], β[l - data.nα]
     C, ϑ   = model.C, model.l.ϑ
-    M <: TopPush ? K = 1 : K = model.K
+    K = getK(model, data)
 
     a = - data.K[k,k] - 2*data.K[k,l] - data.K[l,l] - 1/(2*C*ϑ^2)
     b = - s[k] - s[l] + 1/ϑ - αk/(2*C*ϑ^2)
@@ -369,7 +398,7 @@ function rule_ββ!(model::M, data::Dual{<:DTrain}, best::BestUpdate, k, l, α, 
 
     βk, βl = β[k - data.nα], β[l - data.nα]
     C, ϑ   = data.n, model.C, model.l.ϑ
-    M <: TopPush ? K = 1 : K = model.K
+    K = getK(model, data)
 
     a = - data.K[k,k] + 2*data.K[k,l] - data.K[l,l]
     b = - s[k] + s[l]

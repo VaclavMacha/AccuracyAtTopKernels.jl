@@ -44,27 +44,27 @@ import MLKernels: Orientation,
                   SigmoidKernel
 
 # -------------------------------------------------------------------------------
-# Export 
+# Export
 # -------------------------------------------------------------------------------
 export
     solve,
     scores,
     predict,
     exact_threshold,
-    
+
     # Solvers
     AbstractSolver,
         General,
         Gradient,
         Coordinate,
     ECOSSolver,
-    
+
     # Surrogates
     AbstractSurrogate,
         Hinge,
         Quadratic,
         Exponential,
-    
+
     # Models
     AbstractModel,
         AbstractPatMat,
@@ -73,14 +73,15 @@ export
         AbstractTopPushK,
             TopPushK,
             TopPush,
+            τFPL,
 
-    # Data        
+    # Data
     AbstractData,
         Primal,
         Dual,
             DTrain,
             DValidation,
-            DTest, 
+            DTest,
 
     # Gradient descent optimizers (reexport Flux.Optimise)
     AbstractOptimizer,
@@ -116,7 +117,7 @@ export
 
 
 # -------------------------------------------------------------------------------
-# types  
+# types
 # -------------------------------------------------------------------------------
 abstract type AbstractSurrogate end
 abstract type AbstractData end
@@ -129,7 +130,7 @@ AbstractOptimizer = Union{Descent, ADAM, Momentum, Nesterov, RMSProp, ADAGrad,
                           AdaMax, ADADelta, AMSGrad, NADAM, RADAM}
 
 
-function show(io::IO, opt::O) where {O<:AbstractOptimizer} 
+function show(io::IO, opt::O) where {O<:AbstractOptimizer}
     args   = [getfield(opt, field) for field in fieldnames(O) if !in(field, (:velocity, :acc, :state))]
     print(io, "$(O.name)($(join(args, ",")))")
 end
