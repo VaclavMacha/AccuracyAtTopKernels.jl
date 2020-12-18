@@ -245,7 +245,7 @@ function projection!(model::M, data::Dual{<:DTrain}, α, β) where {M<:AbstractT
     return α, β
 end
 
-function threshold(model::TopPushK, data::Dual, s)
+function threshold(model::AbstractTopPushK, data::Dual, s)
     K = getK(model, data)
    return mean(partialsort(.- s[data.ind_β], 1:K, rev = true))
 end
@@ -279,7 +279,7 @@ function select_k(model::AbstractTopPushK, data::Dual{<:DTrain}, α, β)
 end
 
 
-function apply!(model::TopPushK, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
+function apply!(model::AbstractTopPushK, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
     βsorted!(data, best, β, βsort)
     if best.k <= data.nα && best.l > data.nα
         αsum .+= best.Δ
