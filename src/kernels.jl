@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # Prepare function
 # -------------------------------------------------------------------------------
-function prepare(::Type{<:PatMat}, X::AbstractMatrix, y::BitArray{1})
+function prepare(::Type{<:PatMat}, X::AbstractMatrix, y::AbstractVector{Bool})
 
     ind_pos  = findall(y)
     ind_neg  = findall(.~y)
@@ -18,7 +18,7 @@ end
 function prepare(
     ::Type{<:Union{AbstractTopPushK, PatMatNP}},
     X::AbstractMatrix,
-    y::BitArray{1}
+    y::AbstractVector{Bool}
 )
 
     ind_pos  = findall(y)
@@ -38,7 +38,7 @@ end
 # -------------------------------------------------------------------------------
 function kernelmatrix(M::Type{<:AbstractModel},
                       Xtrain::AbstractArray,
-                      ytrain::BitArray{1};
+                      ytrain::AbstractVector{Bool};
                       kernel::Kernel = LinearKernel(1, 0))
 
     X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(M, Xtrain, ytrain)
@@ -54,7 +54,7 @@ end
 function save_kernelmatrix(M::Type{<:AbstractModel},
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
-                           ytrain::BitArray{1};
+                           ytrain::AbstractVector{Bool};
                            kernel::Kernel = LinearKernel(1, 0),
                            T::DataType    = Float32)
 
@@ -88,9 +88,9 @@ end
 # -------------------------------------------------------------------------------
 function kernelmatrix(M::Type{<:AbstractModel},
                       Xtrain::AbstractArray,
-                      ytrain::BitArray{1},
+                      ytrain::AbstractVector{Bool},
                       Xvalid::AbstractArray,
-                      yvalid::BitArray{1};
+                      yvalid::AbstractVector{Bool};
                       kernel::Kernel = LinearKernel(1, 0))
 
     X, nα, nβ, = prepare(M, Xtrain, ytrain)
@@ -108,9 +108,9 @@ end
 function save_kernelmatrix(M::Type{<:AbstractModel},
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
-                           ytrain::BitArray{1},
+                           ytrain::AbstractVector{Bool},
                            Xvalid::AbstractMatrix,
-                           yvalid::BitArray{1};
+                           yvalid::AbstractVector{Bool};
                            kernel::Kernel = LinearKernel(1, 0),
                            T::DataType    = Float32)
 
@@ -146,7 +146,7 @@ end
 # -------------------------------------------------------------------------------
 function kernelmatrix(M::Type{<:AbstractModel},
                       Xtrain::AbstractArray,
-                      ytrain::BitArray{1},
+                      ytrain::AbstractVector{Bool},
                       Xtest::AbstractArray;
                       kernel::Kernel = LinearKernel(1, 0))
 
@@ -163,7 +163,7 @@ end
 function save_kernelmatrix(M::Type{<:AbstractModel},
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
-                           ytrain::BitArray{1},
+                           ytrain::AbstractVector{Bool},
                            Xtest::AbstractMatrix;
                            kernel::Kernel = LinearKernel(1, 0),
                            T::DataType = Float32)

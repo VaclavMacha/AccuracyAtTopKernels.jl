@@ -6,12 +6,8 @@
     @assert K >= 1 "The vaule of `K` must be greater or equal to 1."
 end
 
-
 TopPushK(K::Int) = TopPushK(K = K)
-
-
-show(io::IO, model::TopPushK) =
-    print(io, "TopPushK($(model.K), $(model.C), $(model.l))")
+show(io::IO, model::TopPushK) = print(io, "TopPushK($(model.K), $(model.C), $(model.l))")
 
 
 @with_kw_noshow struct TopPush{S<:AbstractSurrogate, T<:Real} <: AbstractTopPushK{S}
@@ -19,9 +15,7 @@ show(io::IO, model::TopPushK) =
     l::S = Hinge(ϑ = 1.0)
 end
 
-
-show(io::IO, model::TopPush) =
-    print(io, "TopPush($(model.C), $(model.l))")
+show(io::IO, model::TopPush) = print(io, "TopPush($(model.C), $(model.l))")
 
 @with_kw_noshow struct τFPL{S<:AbstractSurrogate, R<:Real, T<:Real} <: AbstractTopPushK{S}
     τ::R
@@ -31,12 +25,8 @@ show(io::IO, model::TopPush) =
     @assert 0 < τ < 1  "The vaule of `τ` must lay in the interval (0,1)."
 end
 
-
 τFPL(τ::Real) = τFPL(τ = τ)
-
-
-show(io::IO, model::τFPL) =
-    print(io, "τFPL($(model.τ), $(model.C), $(model.l))")
+show(io::IO, model::τFPL) = print(io, "τFPL($(model.τ), $(model.C), $(model.l))")
 
 getK(model::TopPushK, data) = model.K
 getK(model::TopPush, data) = 1
@@ -46,7 +36,7 @@ getK(model::τFPL, data::Dual) = max(1, round(Int, model.τ * data.nβ))
 # -------------------------------------------------------------------------------
 # Primal problem - General solver
 # -------------------------------------------------------------------------------
-function optimize(solver::General, model::TopPushK, data::Primal)
+function optimize(solver::General, model::AbstractTopPushK, data::Primal)
 
     Xpos = @view data.X[data.ind_pos, :]
     Xneg = @view data.X[data.ind_neg, :]
@@ -110,7 +100,7 @@ function threshold(model::AbstractTopPushK, data::Primal, s)
 end
 
 
-function threshold(model::TopPush, data::Primal, s)
+function threshold(::TopPush, data::Primal, s)
    return maximum(s[data.ind_neg])
 end
 
@@ -251,7 +241,7 @@ function threshold(model::AbstractTopPushK, data::Dual, s)
 end
 
 
-function threshold(model::TopPush, data::Dual, s)
+function threshold(::TopPush, data::Dual, s)
    return maximum(.- s[data.ind_β])
 end
 
@@ -269,17 +259,17 @@ end
 # -------------------------------------------------------------------------------
 # Dual problem - Coordinate descent solver
 # -------------------------------------------------------------------------------
-function loss(model::AbstractTopPushK, data::Dual{<:DTrain}, a::Real, b::Real, Δ::Real)
+function loss(::AbstractTopPushK, ::Dual{<:DTrain}, a::Real, b::Real, Δ::Real)
     a*Δ^2/2 + b*Δ
 end
 
 
-function select_k(model::AbstractTopPushK, data::Dual{<:DTrain}, α, β)
+function select_k(::AbstractTopPushK, data::Dual{<:DTrain}, α, β)
     rand(1:(data.nα + data.nβ))
 end
 
 
-function apply!(model::AbstractTopPushK, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
+function apply!(::AbstractTopPushK, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
     βsorted!(data, best, β, βsort)
     if best.k <= data.nα && best.l > data.nα
         αsum .+= best.Δ
@@ -290,7 +280,7 @@ function apply!(model::AbstractTopPushK, data::Dual{<:DTrain}, best::BestUpdate,
 end
 
 
-function apply!(model::TopPush, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
+function apply!(::TopPush, data::Dual{<:DTrain}, best::BestUpdate, α, β, αβ, s, αsum, βsort)
     αβ[best.k] = best.vars[1]
     αβ[best.l] = best.vars[2]
     scores!(data, best, s)

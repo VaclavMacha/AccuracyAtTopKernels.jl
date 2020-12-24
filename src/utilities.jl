@@ -87,8 +87,16 @@ function update!(state::State,
         ProgressMeter.next!(progress.bar; showvalues = vals)
     end
 
-    if condition_1 || condition_2
-        key = condition_1 ? :optimal : iter
+    if condition_2
+        key = iter
+        if isa(data, Dual)
+            state.dict[key] = (vars..., time = time() - state.time_init, L = L, L_primal = L_primal)
+        else
+            state.dict[key] = (vars..., time = time() - state.time_init, L = L)
+        end
+    end
+    if condition_1
+        key = :optimal
         if isa(data, Dual)
             state.dict[key] = (vars..., time = time() - state.time_init, L = L, L_primal = L_primal)
         else
@@ -209,7 +217,11 @@ exact_threshold(model::PatMatNP, data::Primal, s) =
 
 function exact_threshold(model::AbstractTopPushK, data::Primal, s)
     K = getK(model, data)
-    mean(partialsort(s[data.ind_neg], 1:K, rev = true))
+    if K >= length(data.type.ind_neg)
+        return mean(s[data.ind_neg])
+    else
+        return mean(partialsort(s[data.ind_neg], 1:K, rev = true))
+    end
 end
 
 exact_threshold(model::TopPush, data::Primal, s) =
@@ -226,7 +238,11 @@ exact_threshold(model::PatMatNP, data::Dual{<:Union{DTrain, DValidation}}, s) =
 
 function exact_threshold(model::AbstractTopPushK, data::Dual{<:Union{DTrain, DValidation}}, s)
     K = getK(model, data)
-    mean(partialsort(s[data.type.ind_neg], 1:K, rev = true))
+    if K >= length(data.type.ind_neg)
+        return mean(s[data.type.ind_neg])
+    else
+        return mean(partialsort(s[data.type.ind_neg], 1:K, rev = true))
+    end
 end
 
 exact_threshold(model::TopPush, data::Dual{<:Union{DTrain, DValidation}}, s) =

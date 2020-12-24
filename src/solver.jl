@@ -1,5 +1,6 @@
 # General solver
-function solve(solver::General, model::AbstractModel, data::Primal)
+function solve(solver_in::General, model::AbstractModel, data::Primal)
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     val, tm, = @timed optimize(solver, model, data)
@@ -10,7 +11,8 @@ function solve(solver::General, model::AbstractModel, data::Primal)
 end
 
 
-function solve(solver::General, model::AbstractPatMat, data::Dual{<:DTrain})
+function solve(solver_in::General, model::AbstractPatMat, data::Dual{<:DTrain})
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     val, tm, = @timed optimize(solver, model, data)
@@ -22,7 +24,8 @@ function solve(solver::General, model::AbstractPatMat, data::Dual{<:DTrain})
 end
 
 
-function solve(solver::General, model::AbstractTopPushK, data::Dual{<:DTrain})
+function solve(solver_in::General, model::AbstractTopPushK, data::Dual{<:DTrain})
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     val, tm, = @timed optimize(solver, model, data)
@@ -37,7 +40,8 @@ end
 # -------------------------------------------------------------------------------
 # Primal problem - gradient solver
 # -------------------------------------------------------------------------------
-function solve(solver::Gradient, model::AbstractModel, data::Primal)
+function solve(solver_in::Gradient, model::AbstractModel, data::Primal)
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     w, s, Δ         = initialization(model, data)
@@ -67,7 +71,8 @@ end
 # Dual problem - gradient solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Gradient, model::AbstractPatMat, data::Dual{<:DTrain})
+function solve(solver_in::Gradient, model::AbstractPatMat, data::Dual{<:DTrain})
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     α, β, δ, αβδ, s = initialization(model, data)
@@ -83,7 +88,7 @@ function solve(solver::Gradient, model::AbstractPatMat, data::Dual{<:DTrain})
 
         # update score
         s .= data.K * vcat(α, β)
- 
+
         # progress and state
         update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
     end
@@ -95,7 +100,8 @@ end
 
 
 # TopPushK
-function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain})
+function solve(solver_in::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain})
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     α, β, αβ, s     = initialization(model, data)
@@ -115,7 +121,7 @@ function solve(solver::Gradient, model::AbstractTopPushK, data::Dual{<:DTrain})
         # progress and state
         update!(state, progress, solver, model, data, iter, s; α = copy(α), β = copy(β))
     end
-    
+
     t = exact_threshold(model, data, α, β)
 
     return (α = copy(α), β = copy(β), t = copy(t) , state = state)
@@ -126,13 +132,14 @@ end
 # Dual problem - coordinate descent solver
 # -------------------------------------------------------------------------------
 # PatMat
-function solve(solver::Coordinate, model::AbstractPatMat{<:S}, data::Dual{<:DTrain}) where {S<:AbstractSurrogate}
+function solve(solver_in::Coordinate, model::AbstractPatMat{<:S}, data::Dual{<:DTrain}) where {S<:AbstractSurrogate}
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     α, β, δ, αβδ, s = initialization(model, data)
     S <: Hinge     && ( βtmp = sort(β, rev = true) )
     S <: Quadratic && ( βtmp = [sum(abs2, β)/(4*model.l2.ϑ^2)] )
- 
+
     state, progress = ProgStateInit(solver, model, data, s; α = copy(α), β = copy(β), δ = copy(δ[1]))
 
     # optimization
@@ -154,7 +161,8 @@ end
 
 
 # TopPushK
-function solve(solver::Coordinate, model::AbstractTopPushK, data::Dual{<:DTrain})
+function solve(solver_in::Coordinate, model::AbstractTopPushK, data::Dual{<:DTrain})
+    solver = deepcopy(solver_in)
     Random.seed!(solver.seed)
 
     α, β, αβ, s     = initialization(model, data)
@@ -178,4 +186,3 @@ function solve(solver::Coordinate, model::AbstractTopPushK, data::Dual{<:DTrain}
 
     return (α = copy(α), β = copy(β), t = copy(t), state = state)
 end
-

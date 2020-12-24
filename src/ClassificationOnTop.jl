@@ -146,12 +146,24 @@ show(io::IO, solver::General) =
     print(io, "General($(typeof(solver.solver).name))")
 
 
-@with_kw_noshow struct Gradient{I<:Integer, B<:Bool, O<:AbstractOptimizer, V} <: AbstractSolver
-    seed::I      = rand(1:10000)
-    maxiter::I   = 1000
-    verbose::B   = true
-    optimizer::O = ADAM()
-    iters::V     = Int[]
+struct Gradient{O<:AbstractOptimizer} <: AbstractSolver
+    seed::Int
+    maxiter::Int
+    verbose::Bool
+    optimizer::O
+    iters::Vector{Int}
+
+    function Gradient(;
+        seed = rand(1:10000),
+        maxiter = 1000,
+        verbose = true,
+        optimizer::O = ADAM(),
+        iters = Int[],
+    ) where {O<:AbstractOptimizer}
+
+        iters = sort(unique(vcat(iters, maxiter)))
+        return new{O}(seed, maxiter, verbose, optimizer, iters)
+    end
 end
 
 
@@ -159,11 +171,22 @@ show(io::IO, solver::Gradient) =
     print(io, "Gradient($(solver.maxiter), $(solver.optimizer))")
 
 
-@with_kw_noshow  struct Coordinate{I<:Integer, B<:Bool, V} <: AbstractSolver
-    seed::I    = rand(1:10000)
-    maxiter::I = 1000
-    verbose::B = true
-    iters::V   = Int[]
+struct Coordinate <: AbstractSolver
+    seed::Int
+    maxiter::Int
+    verbose::Bool
+    iters::Vector{Int}
+
+    function Coordinate(;
+        seed = rand(1:10000),
+        maxiter = 1000,
+        verbose = true,
+        iters = Int[],
+    )
+
+        iters = sort(unique(vcat(iters, maxiter)))
+        return new(seed, maxiter, verbose, iters)
+    end
 end
 
 
