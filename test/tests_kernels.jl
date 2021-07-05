@@ -81,23 +81,23 @@ end
 
 function test_kernelmatrix(model, kernel, Xtrain, ytrain, Xtest, ytest; atol::Real = 1e-10)
     
-    ClassificationOnTop.save_kernelmatrix(model, "train.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
-    ClassificationOnTop.save_kernelmatrix(model, "valid.bin", Xtrain, ytrain, Xtest, ytest; kernel = kernel, T = Float64)
-    ClassificationOnTop.save_kernelmatrix(model, "test.bin", Xtrain, ytrain, Xtest; kernel = kernel, T = Float64)
+    AccuracyAtTopKernels.save_kernelmatrix(model, "train.bin", Xtrain, ytrain; kernel = kernel, T = Float64)
+    AccuracyAtTopKernels.save_kernelmatrix(model, "valid.bin", Xtrain, ytrain, Xtest, ytest; kernel = kernel, T = Float64)
+    AccuracyAtTopKernels.save_kernelmatrix(model, "test.bin", Xtrain, ytrain, Xtest; kernel = kernel, T = Float64)
 
     K1  = getmatrix(model, Xtrain, ytrain, kernel)
-    K2, = ClassificationOnTop.kernelmatrix(model, Xtrain, ytrain; kernel = kernel)
-    t3, io3, out3 = ClassificationOnTop.load_kernelmatrix("train.bin"; T = Float64)
+    K2, = AccuracyAtTopKernels.kernelmatrix(model, Xtrain, ytrain; kernel = kernel)
+    t3, io3, out3 = AccuracyAtTopKernels.load_kernelmatrix("train.bin"; T = Float64)
     K3 = out3[1]
 
     K4  = getmatrix(model, Xtrain, ytrain, Xtest, ytest, kernel)
-    K5, = ClassificationOnTop.kernelmatrix(model, Xtrain, ytrain, Xtest, ytest; kernel = kernel)
-    t6, io6, out6 = ClassificationOnTop.load_kernelmatrix("valid.bin"; T = Float64)
+    K5, = AccuracyAtTopKernels.kernelmatrix(model, Xtrain, ytrain, Xtest, ytest; kernel = kernel)
+    t6, io6, out6 = AccuracyAtTopKernels.load_kernelmatrix("valid.bin"; T = Float64)
     K6 = out6[1]
 
     K7  = getmatrix(model, Xtrain, ytrain, Xtest, kernel)
-    K8, = ClassificationOnTop.kernelmatrix(model, Xtrain, ytrain, Xtest; kernel = kernel)
-    t9, io9, out9 = ClassificationOnTop.load_kernelmatrix("test.bin"; T = Float64)
+    K8, = AccuracyAtTopKernels.kernelmatrix(model, Xtrain, ytrain, Xtest; kernel = kernel)
+    t9, io9, out9 = AccuracyAtTopKernels.load_kernelmatrix("test.bin"; T = Float64)
     K9 = out9[1]
 
     @testset "train kernel matrix" begin

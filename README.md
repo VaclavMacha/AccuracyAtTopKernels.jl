@@ -1,11 +1,11 @@
-##  ClassificationOnTop_nonlinear.jl
+##  AccuracyAtTopKernels_nonlinear.jl
 This repository is a complementary material to our paper [Nonlinear classifiers for ranking problems based on kernelized SVM](https://arxiv.org/abs/2002.11436?fbclid=IwAR08_G_fSYTNkdfOt191rZAq2qMwY22z_iReUGJ2CEDXz7L3m_a4ZSxvpiY).
 
 # Installation
 
 This package can be installed using pkg REPL as follows
 ```julia
-] pkg> add https://github.com/VaclavMacha/ClassificationOnTop_nonlinear.jl
+] pkg> add https://github.com/VaclavMacha/AccuracyAtTopKernels_nonlinear.jl
 ```
 
 # Usage
@@ -32,7 +32,7 @@ This package provides following methods:
 The following example is provided to demonstrate how to use the package. Firstly, we generate some random data
 
 ```julia
-using ClassificationOnTop, StatsPlots, Random
+using AccuracyAtTopKernels, StatsPlots, Random
 
 Random.seed!(1234)
 
@@ -99,4 +99,3 @@ savefig(plt, "scores.png")
 ```
 
 ![Comparison of scores.](scripts/scores.png)
-

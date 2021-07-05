@@ -41,8 +41,8 @@ end
 
 
 function test_projection(α0::AbstractVector, β0::AbstractVector, δ0::Real, C1::Real, C2::Real; atol::Real = 1e-5)
-    α1, β1, δ1 = ClassificationOnTop.projection(α0, β0, δ0, C1, C2)
-    α2, β2, δ2 = ClassificationOnTop.projection_exact(α0, β0, δ0, C1, C2)
+    α1, β1, δ1 = AccuracyAtTopKernels.projection(α0, β0, δ0, C1, C2)
+    α2, β2, δ2 = AccuracyAtTopKernels.projection_exact(α0, β0, δ0, C1, C2)
 
     @testset "patmat hinge" begin
         @testset "feasibility" begin
@@ -60,8 +60,8 @@ end
 
 
 function test_projection(α0::AbstractVector, β0::AbstractVector, δ0::Real; atol::Real = 1e-5)
-    α1, β1, δ1 = ClassificationOnTop.projection(α0, β0, δ0)
-    α2, β2, δ2 = ClassificationOnTop.projection_exact(α0, β0, δ0)
+    α1, β1, δ1 = AccuracyAtTopKernels.projection(α0, β0, δ0)
+    α2, β2, δ2 = AccuracyAtTopKernels.projection_exact(α0, β0, δ0)
 
     @testset "patmat quadratic" begin
         @testset "feasibility" begin
@@ -78,8 +78,8 @@ end
 
 
 function test_projection(α0::AbstractVector, β0::AbstractVector, C::Real, K::Integer; atol::Real = 1e-5)
-    α1, β1 = ClassificationOnTop.projection(α0, β0, C, K)
-    α2, β2 = ClassificationOnTop.projection_exact(α0, β0, C, K)
+    α1, β1 = AccuracyAtTopKernels.projection(α0, β0, C, K)
+    α2, β2 = AccuracyAtTopKernels.projection_exact(α0, β0, C, K)
 
     @testset "toppushk hinge" begin
         @testset "feasibility" begin
@@ -97,8 +97,8 @@ end
 
 
 function test_projection(α0::AbstractVector, β0::AbstractVector, K::Integer; atol::Real = 1e-5)
-    α1, β1 = ClassificationOnTop.projection(α0, β0, K)
-    α2, β2 = ClassificationOnTop.projection_exact(α0, β0, K)
+    α1, β1 = AccuracyAtTopKernels.projection(α0, β0, K)
+    α2, β2 = AccuracyAtTopKernels.projection_exact(α0, β0, K)
 
     @testset "toppushk quadratic" begin
         @testset "feasibility" begin

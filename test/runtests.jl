@@ -1,7 +1,7 @@
-using ClassificationOnTop
+using AccuracyAtTopKernels
 
 using Test, Distributions, LinearAlgebra, Random
-import ClassificationOnTop.MLKernels
+import AccuracyAtTopKernels.MLKernels
 
 include("./tests_surrogates.jl")
 include("./tests_datasets.jl")

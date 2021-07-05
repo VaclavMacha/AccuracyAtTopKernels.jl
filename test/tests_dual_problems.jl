@@ -51,13 +51,13 @@ end
 function test_dual(model::AbstractModel, data::Dual{<:DTrain}, maxiter::Integer, maxiter2::Integer, optimizer::Any; atol::Real = 1e-2)
 
     sol1 = solve(Gradient(maxiter = maxiter, optimizer = optimizer, verbose = false), model, data)
-    L1   = ClassificationOnTop.objective(model, data, sol1) 
+    L1   = AccuracyAtTopKernels.objective(model, data, sol1) 
 
     sol2 = solve(Coordinate(maxiter = maxiter2, verbose = false), model, data)
-    L2   = ClassificationOnTop.objective(model, data, sol2)
+    L2   = AccuracyAtTopKernels.objective(model, data, sol2)
     
     sol3 = solve(General(), model, data)
-    L3   = ClassificationOnTop.objective(model, data, sol3)
+    L3   = AccuracyAtTopKernels.objective(model, data, sol3)
     
     @testset "gradient solver" begin
         @testset "feasibility" begin

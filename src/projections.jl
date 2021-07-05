@@ -7,7 +7,7 @@ function projection_exact(α0::AbstractVector,
                           δ0::Real,
                           C1::Real,
                           C2::Real;
-                          solver::Any = ECOSSolver(verbose = false))
+                          solver::Any = Optimizer(verbose = false))
 
     α = Convex.Variable(length(α0))
     β = Convex.Variable(length(β0))
@@ -69,7 +69,7 @@ end
 function projection_exact(α0::AbstractVector,
                           β0::AbstractVector,
                           δ0::Real;
-                          solver::Any = ECOSSolver(verbose = false))
+                          solver::Any = Optimizer(verbose = false))
 
     α = Convex.Variable(length(α0))
     β = Convex.Variable(length(β0))
@@ -119,7 +119,7 @@ function projection_exact(α0::AbstractVector,
                           β0::AbstractVector,
                           C::Real,
                           K::Integer;
-                          solver::Any = ECOSSolver(verbose = false))
+                          solver::Any = Optimizer(verbose = false))
 
     α = Convex.Variable(length(α0))
     β = Convex.Variable(length(β0))
@@ -203,7 +203,7 @@ end
 function projection_exact(α0::AbstractVector,
                           β0::AbstractVector,
                           K::Integer;
-                          solver::Any = ECOSSolver(verbose = false))
+                          solver::Any = Optimizer(verbose = false))
 
     α = Convex.Variable(length(α0))
     β = Convex.Variable(length(β0))

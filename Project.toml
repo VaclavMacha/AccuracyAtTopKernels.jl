@@ -1,4 +1,4 @@
-name = "ClassificationOnTop"
+name = "AccuracyAtTopKernels"
 uuid = "aea32afc-efca-41fa-b05b-b3aef4448929"
 authors = ["Vaclav Macha <vaclav.macha92@gmail.com>"]
 version = "0.1.0"

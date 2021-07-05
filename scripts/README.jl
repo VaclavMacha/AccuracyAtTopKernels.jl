@@ -1,11 +1,11 @@
-# ##  ClassificationOnTop.jl
+# ##  AccuracyAtTopKernels.jl
 # This repository is a complementary material to our paper ["General Framework for Nonlinear Binary Classification on Top Samples"]().
 #
 # # Installation
 #
 # This package can be installed using pkg REPL as follows
 # ```julia
-# (v1.2) pkg> add https://github.com/VaclavMacha/ClassificationOnTop_new.jl
+# (v1.2) pkg> add https://github.com/VaclavMacha/AccuracyAtTopKernels_new.jl
 # ```
 
 # # Usage
@@ -30,7 +30,7 @@
 # ## Simple example
 # 
 # In this example we use our package and StatsPlots to visualize the solution.
-using ClassificationOnTop, StatsPlots, Random
+using AccuracyAtTopKernels, StatsPlots, Random
 
 Random.seed!(1234)
 

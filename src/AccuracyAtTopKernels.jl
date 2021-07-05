@@ -1,4 +1,4 @@
-module ClassificationOnTop
+module AccuracyAtTopKernels
 
 
 # -------------------------------------------------------------------------------
@@ -9,7 +9,7 @@ import Convex, Roots, Mmap, ProgressMeter
 import Base: convert, show
 
 import ECOS
-import ECOS: ECOSSolver
+import ECOS: Optimizer
 
 import Flux.Optimise
 import Flux.Optimise: Descent,
@@ -57,7 +57,7 @@ export
         General,
         Gradient,
         Coordinate,
-    ECOSSolver,
+    Optimizer,
 
     # Surrogates
     AbstractSurrogate,
@@ -138,7 +138,7 @@ end
 
 @with_kw_noshow struct General{I<:Integer,S} <: AbstractSolver
     seed::I   = rand(1:10000)
-    solver::S = ECOSSolver(verbose = false)
+    solver::S = Optimizer(verbose = false)
 end
 
 
