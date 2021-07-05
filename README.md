@@ -5,7 +5,7 @@ This repository is a complementary material to our paper [Nonlinear classifiers 
 
 This package can be installed using pkg REPL as follows
 ```julia
-] pkg> add https://github.com/VaclavMacha/AccuracyAtTopKernels_nonlinear.jl
+] pkg> add https://github.com/VaclavMacha/AccuracyAtTopKernels.jl
 ```
 
 # Usage
