@@ -72,7 +72,7 @@ Dual(type::DualType, io::IO, K::AbstractMatrix, nα::Int, nβ::Int, n::Int) =
 
 # train data
 function Dual(
-    M::Type{<:AbstractModel},
+    M::AbstractModel,
     Xtrain::AbstractMatrix,
     ytrain::BitArray{1};
     kwargs...
@@ -90,7 +90,7 @@ end
 
 # validation data
 function Dual(
-    M::Type{<:AbstractModel},
+    M::AbstractModel,
     Xtrain::AbstractMatrix,
     ytrain::BitArray{1},
     Xvalid::AbstractMatrix,
@@ -110,7 +110,7 @@ end
 
 # test data
 function Dual(
-    M::Type{<:AbstractModel},
+    M::AbstractModel,
     Xtrain::AbstractMatrix,
     ytrain::BitArray{1},
     Xtest::AbstractMatrix;

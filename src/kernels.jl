@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------------
 # Prepare function
 # -------------------------------------------------------------------------------
-function prepare(::Type{<:PatMat}, X::AbstractMatrix, y::AbstractVector{Bool})
+function prepare(::PatMat, X::AbstractMatrix, y::AbstractVector{Bool})
 
     ind_pos  = findall(y)
     ind_neg  = findall(.~y)
@@ -16,7 +16,7 @@ end
 
 
 function prepare(
-    ::Type{<:Union{AbstractTopPushK, PatMatNP}},
+    ::Union{AbstractTopPushK, PatMatNP},
     X::AbstractMatrix,
     y::AbstractVector{Bool}
 )
@@ -36,7 +36,7 @@ end
 # -------------------------------------------------------------------------------
 # DTrain kernel matrix
 # -------------------------------------------------------------------------------
-function kernelmatrix(M::Type{<:AbstractModel},
+function kernelmatrix(M::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::AbstractVector{Bool};
                       kernel::Kernel = LinearKernel(1, 0))
@@ -51,7 +51,7 @@ function kernelmatrix(M::Type{<:AbstractModel},
 end
 
 
-function save_kernelmatrix(M::Type{<:AbstractModel},
+function save_kernelmatrix(M::AbstractModel,
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
                            ytrain::AbstractVector{Bool};
@@ -86,7 +86,7 @@ end
 # -------------------------------------------------------------------------------
 # DValidation kernel matrix
 # -------------------------------------------------------------------------------
-function kernelmatrix(M::Type{<:AbstractModel},
+function kernelmatrix(M::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::AbstractVector{Bool},
                       Xvalid::AbstractArray,
@@ -105,7 +105,7 @@ function kernelmatrix(M::Type{<:AbstractModel},
 end
 
 
-function save_kernelmatrix(M::Type{<:AbstractModel},
+function save_kernelmatrix(M::AbstractModel,
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
                            ytrain::AbstractVector{Bool},
@@ -144,7 +144,7 @@ end
 # -------------------------------------------------------------------------------
 # DTest kernel matrix
 # -------------------------------------------------------------------------------
-function kernelmatrix(M::Type{<:AbstractModel},
+function kernelmatrix(M::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::AbstractVector{Bool},
                       Xtest::AbstractArray;
@@ -160,7 +160,7 @@ function kernelmatrix(M::Type{<:AbstractModel},
 end
 
 
-function save_kernelmatrix(M::Type{<:AbstractModel},
+function save_kernelmatrix(M::AbstractModel,
                            file::AbstractString,
                            Xtrain::AbstractMatrix,
                            ytrain::AbstractVector{Bool},
