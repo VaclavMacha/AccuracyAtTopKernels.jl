@@ -9,7 +9,7 @@ function test_projections()
     m = rand(50:150)
 
     @testset "projections" begin
-        @testset "α0 ∼ $(typeof(distα).name), β0 ∼ $(typeof(distβ).name)" for (distα, distβ) in Iterators.product(Dists, Dists)
+        @testset "α0 ∼ $(nameof(typeof(distα))), β0 ∼ $(nameof(typeof(distβ)))" for (distα, distβ) in Iterators.product(Dists, Dists)
             α0 = rand(distα, n)
             β0 = rand(distα, m)
 

@@ -21,7 +21,7 @@ end
 function test_dual()
     models = [PatMat(0.5), TopPushK(5), TopPush()]
 
-    @testset "$(typeof(model).name)" for model in models
+    @testset "$(nameof(typeof(model)))" for model in models
         test_dual(model)
     end
 end

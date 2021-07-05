@@ -1,5 +1,5 @@
 show(io::IO, surr::T) where {T<:AbstractSurrogate} =
-    print(io, "$(T.name)($(surr.ϑ))")
+    print(io, "$(nameof(T))($(surr.ϑ))")
 
 
 @with_kw_noshow struct Hinge{T<:Real} <: AbstractSurrogate

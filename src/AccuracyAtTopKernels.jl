@@ -132,7 +132,7 @@ AbstractOptimizer = Union{Descent, ADAM, Momentum, Nesterov, RMSProp, ADAGrad,
 
 function show(io::IO, opt::O) where {O<:AbstractOptimizer}
     args   = [getfield(opt, field) for field in fieldnames(O) if !in(field, (:velocity, :acc, :state))]
-    print(io, "$(O.name)($(join(args, ",")))")
+    print(io, "$(nameof(O))($(join(args, ",")))")
 end
 
 
@@ -143,7 +143,7 @@ end
 
 
 show(io::IO, solver::General) =
-    print(io, "General($(typeof(solver.solver).name))")
+    print(io, "General($(nameof(typeof(solver.solver))))")
 
 
 struct Gradient{O<:AbstractOptimizer} <: AbstractSolver

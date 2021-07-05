@@ -12,19 +12,19 @@ function test_kernels()
                SquaredExponentialKernel(),
                RationalQuadraticKernel()]
 
-    @testset "PatMat with $(typeof(kernel).name) kernel" for kernel in kernels 
+    @testset "PatMat with $(nameof(typeof(kernel))) kernel" for kernel in kernels 
         test_kernelmatrix(PatMat(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
-    @testset "PatMatNP with $(typeof(kernel).name) kernel" for kernel in kernels 
+    @testset "PatMatNP with $(nameof(typeof(kernel))) kernel" for kernel in kernels 
         test_kernelmatrix(PatMatNP(0.9), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
-    @testset "TopPushK with $(typeof(kernel).name) kernel" for kernel in kernels 
+    @testset "TopPushK with $(nameof(typeof(kernel))) kernel" for kernel in kernels 
         test_kernelmatrix(TopPushK(5), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 
-    @testset "TopPush with $(typeof(kernel).name) kernel" for kernel in kernels 
+    @testset "TopPush with $(nameof(typeof(kernel))) kernel" for kernel in kernels 
         test_kernelmatrix(TopPush(), kernel, Xtrain, ytrain, Xtest, ytest)
     end
 end

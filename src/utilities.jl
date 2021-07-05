@@ -23,7 +23,7 @@ function ProgStateInit(solver::S,
                        scores::AbstractVector;
                        kwargs...) where {S<:AbstractSolver, M<:AbstractModel, D<:AbstractData}
 
-    msg  = "$(M.name) $(D.name) loss - $(S.name) solver: "
+    msg  = "$(nameof(M)) $(nameof(D)) loss - $(nameof(S)) solver: "
     bar  = ProgressMeter.Progress(solver.maxiter, 0.1, msg)
     L    = objective(model, data, values(kwargs)..., scores)
     vals = (values(kwargs)..., time = 0, L = L)
