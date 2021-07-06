@@ -56,7 +56,8 @@ function save_kernelmatrix(M::AbstractModel,
                            Xtrain::AbstractMatrix,
                            ytrain::AbstractVector{Bool};
                            kernel::Kernel = LinearKernel(1, 0),
-                           T::DataType    = Float32)
+                           T::DataType    = Float32,
+                           partial_fill::Bool = false)
 
     X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(M, Xtrain, ytrain)
 
@@ -73,7 +74,11 @@ function save_kernelmatrix(M::AbstractModel,
 
     # kernel matrix
     K = Mmap.mmap(io, Matrix{T}, (N, N))
-    fill_kernelmatrix!(K, kernel, X, X)
+    if partial_fill
+        fill_kernelmatrix!(K, kernel, X, X)
+    else
+        K .= MLKernels.kernelmatrix(Val(:row), kernel, X, true)
+    end
     K[1:nα, nα+1:end]   .*= -1
     K[(nα+1):end, 1:nα] .*= -1
     Mmap.sync!(K)
@@ -112,7 +117,8 @@ function save_kernelmatrix(M::AbstractModel,
                            Xvalid::AbstractMatrix,
                            yvalid::AbstractVector{Bool};
                            kernel::Kernel = LinearKernel(1, 0),
-                           T::DataType    = Float32)
+                           T::DataType    = Float32,
+                           partial_fill::Bool = false)
 
     X, nα, nβ, = prepare(M, Xtrain, ytrain)
     ind_pos    = findall(yvalid)
@@ -132,7 +138,11 @@ function save_kernelmatrix(M::AbstractModel,
 
     # kernel matrix
     K = Mmap.mmap(io, Matrix{T}, (M, N))
-    fill_kernelmatrix!(K, kernel, X, Xvalid)
+    if partial_fill
+        fill_kernelmatrix!(K, kernel, X, Xvalid)
+    else
+        K .= MLKernels.kernelmatrix(Val(:row), kernel, X, Xvalid)
+    end
     K[nα+1:end, :] .*= -1
     Mmap.sync!(K)
     close(io)
@@ -166,7 +176,8 @@ function save_kernelmatrix(M::AbstractModel,
                            ytrain::AbstractVector{Bool},
                            Xtest::AbstractMatrix;
                            kernel::Kernel = LinearKernel(1, 0),
-                           T::DataType = Float32)
+                           T::DataType = Float32,
+                           partial_fill::Bool = false)
 
     X, nα, nβ, = prepare(M, Xtrain, ytrain)
     n          = size(Xtest, 1)
@@ -179,7 +190,11 @@ function save_kernelmatrix(M::AbstractModel,
 
     # kernel matrix
     K = Mmap.mmap(io, Matrix{T}, (M, N))
-    fill_kernelmatrix!(K, kernel, X, Xtest)
+    if partial_fill
+        fill_kernelmatrix!(K, kernel, X, Xtest)
+    else
+        K .= MLKernels.kernelmatrix(Val(:row), kernel, X, Xtest)
+    end
     K[nα+1:end, :] .*= -1
     Mmap.sync!(K)
     close(io)
