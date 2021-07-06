@@ -217,6 +217,7 @@ function fill_kernelmatrix!(K::AbstractMatrix,
 
     ProgressMeter.@showprogress "Kernel matrix calculation in progress: " for rows in Rows
         K[rows, :] .= MLKernels.kernelmatrix(Val(:row), kernel, X[rows,:], Y)
+        Mmap.sync!(K)
     end
 end
 
