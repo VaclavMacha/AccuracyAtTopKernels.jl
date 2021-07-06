@@ -195,7 +195,7 @@ function fill_kernelmatrix!(K::AbstractMatrix,
                             kernel::Kernel,
                             X::AbstractMatrix,
                             Y::AbstractMatrix;
-                            max_chunk_size::Real = 1e8)
+                            max_chunk_size::Real = 1e6)
 
     n    = size(X,1)
     Rows = Iterators.partition(1:n, floor(Int, max(max_chunk_size, n)/n))
