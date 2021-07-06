@@ -39,12 +39,13 @@ end
 function kernelmatrix(M::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::AbstractVector{Bool};
-                      kernel::Kernel = LinearKernel(1, 0))
+                      kernel::Kernel = LinearKernel(1, 0),
+                      T::DataType = Float32,)
 
     X, nα, nβ, ind_pos, ind_neg, inv_perm = prepare(M, Xtrain, ytrain)
     n = length(ytrain)
 
-    K = MLKernels.kernelmatrix(Val(:row), kernel, X, true)
+    K = T.(MLKernels.kernelmatrix(Val(:row), kernel, X, true))
     K[1:nα, nα+1:end]   .*= -1
     K[(nα+1):end, 1:nα] .*= -1
     return K, n, nα, nβ, ind_pos, ind_neg, inv_perm
@@ -96,7 +97,8 @@ function kernelmatrix(M::AbstractModel,
                       ytrain::AbstractVector{Bool},
                       Xvalid::AbstractArray,
                       yvalid::AbstractVector{Bool};
-                      kernel::Kernel = LinearKernel(1, 0))
+                      kernel::Kernel = LinearKernel(1, 0),
+                      T::DataType = Float32,)
 
     X, nα, nβ, = prepare(M, Xtrain, ytrain)
     n          = length(yvalid)
@@ -104,7 +106,7 @@ function kernelmatrix(M::AbstractModel,
     ind_neg    = findall(.~yvalid)
     inv_perm   = 1:length(yvalid)
 
-    K = MLKernels.kernelmatrix(Val(:row), kernel, X, Xvalid)
+    K = T.(MLKernels.kernelmatrix(Val(:row), kernel, X, Xvalid))
     K[(nα+1):end, :] .*= -1
     return K, n, nα, nβ, ind_pos, ind_neg, inv_perm
 end
@@ -158,12 +160,13 @@ function kernelmatrix(M::AbstractModel,
                       Xtrain::AbstractArray,
                       ytrain::AbstractVector{Bool},
                       Xtest::AbstractArray;
-                      kernel::Kernel = LinearKernel(1, 0))
+                      kernel::Kernel = LinearKernel(1, 0),
+                      T::DataType = Float32,)
 
     X, nα, nβ, = prepare(M, Xtrain, ytrain)
     n = size(Xtest, 1)
 
-    K = MLKernels.kernelmatrix(Val(:row), kernel, X, Xtest)
+    K = T.(MLKernels.kernelmatrix(Val(:row), kernel, X, Xtest))
     K[(nα+1):end, :] .*= -1
 
     return K, n, nα, nβ
