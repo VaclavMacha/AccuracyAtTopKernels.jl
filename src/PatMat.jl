@@ -8,7 +8,7 @@
 end
 
 
-PatMat(τ::Real) = PatMat(τ = τ)
+PatMat(τ::Real; kwargs...) = PatMat(; τ = τ, kwargs...)
 
 
 show(io::IO, model::PatMat) =
@@ -25,7 +25,7 @@ show(io::IO, model::PatMat) =
 end
 
 
-PatMatNP(τ::Real) = PatMatNP(τ = τ)
+PatMatNP(τ::Real; kwargs...) = PatMatNP(; τ = τ, kwargs...)
 
 
 show(io::IO, model::PatMatNP) =

@@ -6,7 +6,7 @@
     @assert K >= 1 "The vaule of `K` must be greater or equal to 1."
 end
 
-TopPushK(K::Int) = TopPushK(K = K)
+TopPushK(K::Int; kwargs...) = TopPushK(; K = K, kwargs...)
 show(io::IO, model::TopPushK) = print(io, "TopPushK($(model.K), $(model.C), $(model.l))")
 
 
@@ -25,7 +25,7 @@ show(io::IO, model::TopPush) = print(io, "TopPush($(model.C), $(model.l))")
     @assert 0 < τ < 1  "The vaule of `τ` must lay in the interval (0,1)."
 end
 
-τFPL(τ::Real) = τFPL(τ = τ)
+τFPL(τ::Real; kwargs...) = τFPL(; τ = τ, kwargs...)
 show(io::IO, model::τFPL) = print(io, "τFPL($(model.τ), $(model.C), $(model.l))")
 
 getK(model::TopPushK, data) = model.K
